@@ -1,0 +1,10 @@
+# Segredos e Ambiente
+.env
+.env.*
+
+# Python & Ambientes Virtuais
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
