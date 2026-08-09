@@ -30,6 +30,7 @@ class Settings(BaseSettings):
 
     # Stripe
     stripe_secret_key: str
+    stripe_webhook_secret: str | None = None
 
     # TMDB
     tmdb_read_token: str
@@ -46,3 +47,50 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# ── Hardening: validação de segredos críticos no startup ──────────────────────
+
+_MINIMUM_SECRET_LENGTH = 32
+_WEAK_SECRET_TERMS = ("secret", "123456", "change_me", "changeme", "password")
+
+
+def validate_critical_secrets(current_settings: Settings) -> None:
+    """Valida comprimento e entropia mínima dos segredos críticos.
+
+    Chamada no lifespan da aplicação: impede a subida da API se algum
+    segredo tiver menos de 32 caracteres ou contiver termos padrão fracos
+    e previsíveis. Os VALORES dos segredos nunca aparecem na mensagem de
+    erro nem nos logs — apenas o nome da variável e o motivo da rejeição.
+
+    Raises:
+        RuntimeError: lista de problemas encontrados nos segredos.
+    """
+    critical_secrets: dict[str, str] = {
+        "jwt_secret_key": current_settings.jwt_secret_key,
+        "fernet_secret": current_settings.fernet_secret,
+    }
+
+    problems: list[str] = []
+    for name, value in critical_secrets.items():
+        if len(value) < _MINIMUM_SECRET_LENGTH:
+            problems.append(
+                f"'{name}' possui {len(value)} caracteres "
+                f"(mínimo exigido: {_MINIMUM_SECRET_LENGTH})"
+            )
+        lowered_value = value.lower()
+        weak_terms_found = [
+            term for term in _WEAK_SECRET_TERMS if term in lowered_value
+        ]
+        if weak_terms_found:
+            problems.append(
+                f"'{name}' contém termos fracos/previsíveis: "
+                f"{', '.join(weak_terms_found)}"
+            )
+
+    if problems:
+        raise RuntimeError(
+            "Segredos críticos reprovados na validação de segurança — "
+            "gere novos valores fortes no .env antes de subir a API: "
+            + "; ".join(problems)
+        )

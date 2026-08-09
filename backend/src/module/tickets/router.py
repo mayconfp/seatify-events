@@ -1,0 +1,69 @@
+"""Rotas do modulo de ingressos.
+
+Thin handlers para reserva de assentos, listagem de ingressos
+e acesso publico por share hash.
+"""
+
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Request
+
+from src.deps import SessionDep, limiter, require_role
+from src.module.auth.model import User, UserRole
+from src.module.tickets import service
+from src.module.tickets.schemas import (
+    ReservationResponseSchema,
+    ReserveSeatsSchema,
+    TicketResponseSchema,
+)
+
+router = APIRouter(tags=["Tickets"])
+
+ClientDep = Annotated[User, Depends(require_role([UserRole.CLIENT]))]
+
+
+@router.post(
+    "/events/{event_id}/reserve",
+    response_model=ReservationResponseSchema,
+    status_code=201,
+)
+@limiter.limit("60/minute")
+async def reserve_seats(
+    request: Request,
+    event_id: UUID,
+    schema: ReserveSeatsSchema,
+    session: SessionDep,
+    client: ClientDep,
+) -> ReservationResponseSchema:
+    """Reserva assentos em um evento (apenas CLIENT).
+
+    Os assentos ficam em status PENDING ate confirmacao via checkout.
+    Assentos PENDING ha mais de 15 minutos sao automaticamente liberados.
+    """
+    seats = await service.reserve_seats(session, client, event_id, schema.seat_numbers)
+    return ReservationResponseSchema(
+        event_id=event_id,
+        reserved_seats=[s.seat_number for s in seats],
+        message=f"{len(seats)} assento(s) reservado(s) com sucesso. Finalize o checkout em ate 15 minutos.",
+    )
+
+
+@router.get("/tickets/me", response_model=list[TicketResponseSchema])
+async def get_my_tickets(
+    session: SessionDep,
+    client: ClientDep,
+) -> list[TicketResponseSchema]:
+    """Retorna ingressos do usuario autenticado (apenas CLIENT)."""
+    tickets = await service.get_user_tickets(session, client.id)
+    return [TicketResponseSchema.model_validate(t) for t in tickets]
+
+
+@router.get("/tickets/share/{share_link_hash}", response_model=TicketResponseSchema)
+async def get_ticket_by_share(
+    share_link_hash: str,
+    session: SessionDep,
+) -> TicketResponseSchema:
+    """Retorna detalhes de um ingresso via link de compartilhamento (publico)."""
+    ticket = await service.get_ticket_by_share_hash(session, share_link_hash)
+    return TicketResponseSchema.model_validate(ticket)

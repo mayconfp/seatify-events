@@ -15,6 +15,8 @@ from uuid import UUID
 import jwt
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +26,11 @@ from src.module.auth.model import User, UserRole
 from src.util.jwt_utils import decode_access_token
 
 logger = logging.getLogger("eventify.deps")
+
+# Rate limiting
+# Instancia unica do Limiter, definida aqui para evitar importacao circular:
+# os handlers importam limiter diretamente de src.deps sem depender de main.py.
+limiter = Limiter(key_func=get_remote_address)
 
 # Session
 
@@ -90,6 +97,14 @@ def require_role(allowed_roles: list[UserRole]):
 
     async def _check_role(current_user: LoggedUserDep) -> User:
         if current_user.role not in allowed_roles:
+            # Auditoria: acesso negado por RBAC. Loga apenas identificadores
+            # e papeis — nunca tokens ou dados sensiveis.
+            logger.warning(
+                "Acesso negado por RBAC (user_id=%s, role=%s, exigido=%s)",
+                current_user.id,
+                current_user.role.value,
+                ", ".join(r.value for r in allowed_roles),
+            )
             raise forbidden_error(
                 f"Acesso restrito a: {', '.join(r.value for r in allowed_roles)}"
             )

@@ -19,6 +19,8 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "greenlet>=3.0.0",
     "tzdata>=2026.3",
+    "pydantic[email]>=2.13.4",
+    "slowapi>=0.1.10",
 ]
 
 [project.optional-dependencies]
