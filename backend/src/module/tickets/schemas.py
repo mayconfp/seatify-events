@@ -8,6 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from src.module.events.schemas import EventResponseSchema
 from src.module.tickets.model import SeatStatus, TicketStatus
 
 
@@ -27,6 +28,7 @@ class TicketResponseSchema(BaseModel):
     share_link_hash: str
     status: TicketStatus
     created_at: datetime
+    event: EventResponseSchema | None = None
 
     model_config = {"from_attributes": True}
 

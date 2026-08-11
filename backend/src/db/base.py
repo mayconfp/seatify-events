@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import UTC, datetime
-from typing import Any, override
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import DateTime, MetaData
 from sqlalchemy import Enum as SQLEnum
@@ -39,21 +39,19 @@ class UTCDateTime(TypeDecorator[datetime]):
     impl = DateTime(timezone=True)
     cache_ok = True
 
-    @override
     def process_bind_param(self, value: datetime | None, dialect: Any) -> datetime | None:
         if value is None:
             return None
         if value.tzinfo is None:
-            return value.replace(tzinfo=UTC)
-        return value.astimezone(UTC)
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
-    @override
     def process_result_value(self, value: datetime | None, dialect: Any) -> datetime | None:
         if value is None:
             return None
         if value.tzinfo is None:
-            return value.replace(tzinfo=UTC)
-        return value.astimezone(UTC)
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
 
 def varchar_enum(enum_cls: type[enum.Enum], *, name: str, length: int | None = None) -> SQLEnum:

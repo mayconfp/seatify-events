@@ -1,1 +1,0 @@
-# Eventify Backend API

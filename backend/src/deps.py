@@ -2,7 +2,7 @@
 
 Padrões:
 - Funções get_* são dependências FastAPI (async generators ou callables).
-- Aliases *Dep são os únicos que os handlers devem importar — escondem
+- Aliases *Dep são os únicos que os routers devem importar — escondem
   o wiring e produzem anotações de tipo corretas.
 - require_role() é uma factory que retorna uma dependência para RBAC.
 """
@@ -29,7 +29,7 @@ logger = logging.getLogger("eventify.deps")
 
 # Rate limiting
 # Instancia unica do Limiter, definida aqui para evitar importacao circular:
-# os handlers importam limiter diretamente de src.deps sem depender de main.py.
+# os routers importam limiter diretamente de src.deps sem depender de main.py.
 limiter = Limiter(key_func=get_remote_address)
 
 # Session
@@ -81,7 +81,7 @@ LoggedUserDep = Annotated[User, Depends(get_current_user)]
 def require_role(allowed_roles: list[UserRole]):
     """Factory de dependência para controle de acesso baseado em papel (RBAC).
 
-    Uso no handler:
+    Uso no router:
         @router.get("/admin", dependencies=[Depends(require_role([UserRole.ORGANIZER]))])
 
     Ou como parâmetro tipado:

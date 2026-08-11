@@ -1,7 +1,7 @@
 """Testes isolados do rate limiting (SlowAPI).
 
 Valida:
-1. O wiring do limiter na aplicacao real (app.state.limiter e handler 429).
+1. O wiring do limiter na aplicacao real (app.state.limiter e exception handler 429).
 2. O comportamento funcional de bloqueio HTTP 429 em uma app isolada,
    sem poluir o orcamento de requisicoes das rotas reais nem depender do banco.
 3. Que a rota de webhook do checkout NAO possui rate limit aplicado.
@@ -25,7 +25,7 @@ def test_app_has_limiter_configured() -> None:
 
 
 def test_rate_limit_exceeded_handler_registered() -> None:
-    """O handler de RateLimitExceeded deve estar registrado na app real."""
+    """O exception handler de RateLimitExceeded deve estar registrado na app real."""
     assert RateLimitExceeded in app.exception_handlers
 
 
@@ -33,12 +33,12 @@ def test_expected_routes_are_rate_limited() -> None:
     """As 6 rotas exigidas devem estar registradas no limiter._route_limits."""
     limited_keys = set(limiter._route_limits.keys())
     expected = {
-        "src.module.auth.handler.register",
-        "src.module.auth.handler.login",
-        "src.module.events.handler.search_tmdb",
-        "src.module.tickets.handler.reserve_seats",
-        "src.module.checkout.handler.simulate_payment",
-        "src.module.gatekeeper.handler.validate_entry",
+        "src.module.auth.router.register",
+        "src.module.auth.router.login",
+        "src.module.events.router.search_tmdb",
+        "src.module.tickets.router.reserve_seats",
+        "src.module.checkout.router.simulate_payment",
+        "src.module.gatekeeper.router.validate_entry",
     }
     assert expected.issubset(limited_keys)
 
@@ -46,7 +46,7 @@ def test_expected_routes_are_rate_limited() -> None:
 def test_webhook_route_has_no_rate_limit() -> None:
     """A rota POST /checkout/webhook NAO deve possuir rate limit."""
     limited_keys = set(limiter._route_limits.keys())
-    assert "src.module.checkout.handler.receive_webhook" not in limited_keys
+    assert "src.module.checkout.router.receive_webhook" not in limited_keys
     assert not any("webhook" in key for key in limited_keys)
 
 

@@ -130,10 +130,8 @@ async def _confirm_reservation_payment(
          IntegrityError (duplicata concorrente), faz rollback e retorna 0.
 
     Returns:
-        Numero de ingressos emitidos. Zero se o evento ja foi processado.
-
-    Raises:
-        404: nenhum assento PENDING encontrado para este pagamento.
+        Numero de ingressos emitidos. Zero se o evento ja foi processado,
+        se a reserva expirou ou se houve divergencia na contagem de assentos.
     """
     # 1. Verificacao de idempotencia (fast-path por leitura previa)
     existing = await session.execute(
@@ -160,9 +158,43 @@ async def _confirm_reservation_payment(
     seats = list(result.scalars().all())
 
     if not seats:
-        raise not_found_error(
-            "Nenhum assento PENDING encontrado para este pagamento"
+        logger.warning(
+            "Pagamento recebido para reserva expirada ou inexistente (%s)",
+            stripe_event_id,
         )
+        session.add(
+            ProcessedWebhookEvent(
+                stripe_event_id=stripe_event_id,
+                event_type=f"{event_type}:expired",
+                processed_at=aware_utcnow(),
+            )
+        )
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+        return 0
+
+    if len(seats) != len(seat_numbers):
+        logger.error(
+            "Divergencia na quantidade de assentos PENDING para o pagamento %s "
+            "(esperado=%d, encontrado=%d)",
+            stripe_event_id,
+            len(seat_numbers),
+            len(seats),
+        )
+        session.add(
+            ProcessedWebhookEvent(
+                stripe_event_id=stripe_event_id,
+                event_type=f"{event_type}:seat_mismatch",
+                processed_at=aware_utcnow(),
+            )
+        )
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+        return 0
 
     # 3. Confirma assentos e emite ingressos
     for seat in seats:

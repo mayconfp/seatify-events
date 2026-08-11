@@ -1,6 +1,6 @@
 """Funções auxiliares para exceções HTTP padronizadas.
 
-Handlers de rota devem sempre levantar exceções via estas funções,
+Routers devem sempre levantar exceções via estas funções,
 nunca construindo HTTPException diretamente. Isso garante mensagens
 de erro consistentes.
 """

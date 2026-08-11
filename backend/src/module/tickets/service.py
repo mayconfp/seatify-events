@@ -9,7 +9,8 @@ import logging
 from datetime import timedelta
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors.router import conflict_error, not_found_error, validation_error
@@ -21,6 +22,7 @@ from src.util.datetime_utils import aware_utcnow
 logger = logging.getLogger("eventify.tickets.service")
 
 PENDING_EXPIRATION_MINUTES = 15
+MAX_PENDING_SEATS_PER_USER = 10
 
 
 async def _release_expired_pending_seats(
@@ -91,6 +93,24 @@ async def reserve_seats(
     # Libera PENDING expirados antes de tentar reservar
     await _release_expired_pending_seats(session, event_id)
 
+    # Trava anti-hoarding: limita total de assentos PENDING por usuario POR EVENTO
+    pending_count_result = await session.execute(
+        select(func.count())
+        .select_from(Seat)
+        .where(
+            Seat.event_id == event_id,
+            Seat.user_id == user.id,
+            Seat.status == SeatStatus.PENDING,
+            Seat.deleted_at.is_(None),
+        )
+    )
+    current_pending = pending_count_result.scalar_one()
+    if current_pending + len(seat_numbers) > MAX_PENDING_SEATS_PER_USER:
+        raise validation_error(
+            f"Limite de {MAX_PENDING_SEATS_PER_USER} assentos pendentes por evento excedido. "
+            f"Voce ja possui {current_pending} assento(s) pendente(s) neste evento."
+        )
+
     # SELECT FOR UPDATE — trava as linhas contra acesso concorrente.
     # order_by garante retorno deterministico (independente da ordem fisica
     # dos tuplos no heap do Postgres apos updates repetidos), alinhado com
@@ -149,6 +169,7 @@ async def get_user_tickets(session: AsyncSession, user_id: UUID) -> list[Ticket]
     """
     result = await session.execute(
         select(Ticket)
+        .options(joinedload(Ticket.event))
         .where(Ticket.client_id == user_id, Ticket.deleted_at.is_(None))
         .order_by(Ticket.created_at.desc())
     )
@@ -169,7 +190,9 @@ async def get_ticket_by_share_hash(session: AsyncSession, share_link_hash: str) 
         404: ticket nao encontrado.
     """
     result = await session.execute(
-        select(Ticket).where(
+        select(Ticket)
+        .options(joinedload(Ticket.event))
+        .where(
             Ticket.share_link_hash == share_link_hash,
             Ticket.deleted_at.is_(None),
         )

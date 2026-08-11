@@ -301,3 +301,139 @@ async def test_webhook_idempotent_on_duplicate_event(
     ).json()
     count_after = sum(1 for t in tickets_after if t["event_id"] == event_id)
     assert count_before == count_after == len(seat_numbers)
+
+
+# Edge cases: reserva expirada e divergencia parcial
+
+@pytest.mark.asyncio
+async def test_webhook_expired_seats_returns_200_no_tickets(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Webhook para assentos ja expirados deve retornar 200 sem emitir tickets."""
+    event_id, client_token, seat_numbers = await _create_event_with_reserved_seats(
+        client
+    )
+    me_resp = await client.get("/auth/me", headers=auth_headers(client_token))
+    client_id = me_resp.json()["id"]
+
+    # Simula a expiracao: reverte os assentos PENDING -> AVAILABLE antes do webhook
+    simulate_resp = await client.post(
+        "/checkout/simulate",
+        json={
+            "event_id": event_id,
+            "seat_numbers": seat_numbers,
+            "simulate_failure": True,
+        },
+        headers=auth_headers(client_token),
+    )
+    assert simulate_resp.status_code == 200
+
+    # Agora dispara um webhook como se o Stripe tivesse confirmado o pagamento
+    stripe_event_id = f"evt_test_expired_{uuid.uuid4().hex[:16]}"
+    fake_event = _build_stripe_event(
+        stripe_event_id=stripe_event_id,
+        event_type="checkout.session.completed",
+        event_id=event_id,
+        client_id=client_id,
+        seat_numbers=seat_numbers,
+    )
+
+    monkeypatch.setattr(
+        checkout_service.settings, "stripe_webhook_secret", "whsec_test_stub"
+    )
+    monkeypatch.setattr(
+        stripe.Webhook,
+        "construct_event",
+        lambda payload, sig_header, secret, tolerance=None: fake_event,
+    )
+
+    response = await client.post(
+        "/checkout/webhook",
+        content=b"{}",
+        headers={"Stripe-Signature": "t=0,v1=stub"},
+    )
+    # Deve retornar 200 (nao 404) para evitar loop de retentativas do Stripe
+    assert response.status_code == 200
+    assert response.json() == {"status": "processed"}
+
+    # Nenhum ticket emitido para este evento
+    tickets_resp = await client.get(
+        "/tickets/me", headers=auth_headers(client_token)
+    )
+    tickets_for_event = [
+        t for t in tickets_resp.json() if t["event_id"] == event_id
+    ]
+    assert len(tickets_for_event) == 0
+
+
+@pytest.mark.asyncio
+async def test_webhook_partial_seat_mismatch_returns_200_no_tickets(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Webhook com divergencia parcial de assentos nao deve emitir ingressos parciais."""
+    event_id, client_token, seat_numbers = await _create_event_with_reserved_seats(
+        client, capacity=4, seats_to_reserve=3
+    )
+    me_resp = await client.get("/auth/me", headers=auth_headers(client_token))
+    client_id = me_resp.json()["id"]
+
+    # Simula expiracao parcial: libera apenas o primeiro assento usando
+    # o endpoint de simulacao de falha para assentos individuais.
+    # Como simulate nao suporta parcial, usamos uma segunda reserva/falha
+    # apenas para A1. Em vez disso, chamamos simulate_failure com todos
+    # e re-reservamos apenas 2.
+    fail_resp = await client.post(
+        "/checkout/simulate",
+        json={
+            "event_id": event_id,
+            "seat_numbers": seat_numbers,
+            "simulate_failure": True,
+        },
+        headers=auth_headers(client_token),
+    )
+    assert fail_resp.status_code == 200
+
+    # Re-reserva apenas 2 dos 3 assentos originais
+    partial_seats = seat_numbers[:2]
+    reserve_resp = await client.post(
+        f"/events/{event_id}/reserve",
+        json={"seat_numbers": partial_seats},
+        headers=auth_headers(client_token),
+    )
+    assert reserve_resp.status_code == 201
+
+    # Webhook chega com os 3 assentos originais, mas so 2 estao PENDING
+    stripe_event_id = f"evt_test_mismatch_{uuid.uuid4().hex[:16]}"
+    fake_event = _build_stripe_event(
+        stripe_event_id=stripe_event_id,
+        event_type="payment_intent.succeeded",
+        event_id=event_id,
+        client_id=client_id,
+        seat_numbers=seat_numbers,  # 3 assentos
+    )
+
+    monkeypatch.setattr(
+        checkout_service.settings, "stripe_webhook_secret", "whsec_test_stub"
+    )
+    monkeypatch.setattr(
+        stripe.Webhook,
+        "construct_event",
+        lambda payload, sig_header, secret, tolerance=None: fake_event,
+    )
+
+    response = await client.post(
+        "/checkout/webhook",
+        content=b"{}",
+        headers={"Stripe-Signature": "t=0,v1=stub"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"status": "processed"}
+
+    # Nenhum ticket emitido (divergencia impede emissao parcial)
+    tickets_resp = await client.get(
+        "/tickets/me", headers=auth_headers(client_token)
+    )
+    tickets_for_event = [
+        t for t in tickets_resp.json() if t["event_id"] == event_id
+    ]
+    assert len(tickets_for_event) == 0

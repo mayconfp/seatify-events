@@ -1,7 +1,7 @@
 """Modelo ORM do módulo de checkout.
 
 ProcessedWebhookEvent garante idempotência no processamento de webhooks
-do Stripe: antes de processar um evento, o handler verifica se o
+do Stripe: antes de processar um evento, o router verifica se o
 stripe_event_id já está na tabela. Se sim, retorna 200 sem reprocessar.
 """
 

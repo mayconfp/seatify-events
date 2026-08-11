@@ -1,7 +1,7 @@
 """Camada de negocio do modulo de autenticacao.
 
 Toda regra de negocio relacionada a registro e login reside aqui.
-Os handlers chamam estas funcoes e nunca acessam o banco diretamente.
+Os routers chamam estas funcoes e nunca acessam o banco diretamente.
 """
 
 import logging

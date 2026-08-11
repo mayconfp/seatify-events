@@ -1,6 +1,6 @@
 """Rotas do modulo de autenticacao.
 
-Thin handlers: recebem request, injetam dependencias, chamam service
+Thin routers: recebem request, injetam dependencias, chamam service
 e retornam response. Zero logica de negocio aqui.
 """
 

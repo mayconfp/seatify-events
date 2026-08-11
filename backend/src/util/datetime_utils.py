@@ -5,7 +5,7 @@ de negócio deve ser tz-aware UTC. A localização acontece apenas na borda
 (frontend / agendamentos por entidade).
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Annotated
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import logging
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 try:
     UTC_ZONE = ZoneInfo("UTC")
 except ZoneInfoNotFoundError:
-    UTC_ZONE = UTC  # type: ignore[assignment]
+    UTC_ZONE = timezone.utc  # type: ignore[assignment]
 
 
 def aware_utcnow() -> datetime:
@@ -76,13 +76,29 @@ def local_date(value: datetime, zone: ZoneInfo) -> date:
 UtcDatetime = Annotated[datetime, PlainSerializer(ensure_aware_utc, return_type=datetime)]
 
 
-def generate_expires_at_from_expires_in(expires_in: int) -> int:
-    """Converte duração em segundos para timestamp Unix de expiração."""
-    expires_at_datetime = datetime.now(UTC) + timedelta(seconds=expires_in)
-    return int(expires_at_datetime.timestamp())
+def calculate_expiration_timestamp(duration_seconds: int) -> int:
+    """Calcula timestamp Unix de expiração a partir de duração em segundos.
+    
+    Args:
+        duration_seconds: Duração em segundos até a expiração.
+        
+    Returns:
+        Timestamp Unix (int) representando o momento de expiração.
+    """
+    expiration_moment = datetime.now(UTC) + timedelta(seconds=duration_seconds)
+    return int(expiration_moment.timestamp())
 
 
-def is_expired(expires_at: int, skew_minutes: int = 10) -> bool:
-    """Verifica se um timestamp Unix de expiração já passou (com margem)."""
-    expires_at_datetime = datetime.fromtimestamp(expires_at, UTC)
-    return datetime.now(UTC) >= (expires_at_datetime - timedelta(minutes=skew_minutes))
+def has_timestamp_expired(expiration_timestamp: int, tolerance_minutes: int = 10) -> bool:
+    """Verifica se um timestamp Unix de expiração já passou.
+    
+    Args:
+        expiration_timestamp: Timestamp Unix de expiração.
+        tolerance_minutes: Margem de tolerância em minutos (padrão: 10).
+        
+    Returns:
+        True se o timestamp já expirou (considerando a margem), False caso contrário.
+    """
+    expiration_moment = datetime.fromtimestamp(expiration_timestamp, UTC)
+    current_moment = datetime.now(UTC)
+    return current_moment >= (expiration_moment - timedelta(minutes=tolerance_minutes))

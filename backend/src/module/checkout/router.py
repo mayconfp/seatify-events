@@ -1,6 +1,6 @@
 """Rotas do modulo de checkout.
 
-Thin handlers para criacao de Stripe Checkout Session, recepcao do
+Thin routers para criacao de Stripe Checkout Session, recepcao do
 webhook real (com verificacao criptografica) e simulacao de pagamento
 para desenvolvimento local sem ngrok.
 """

@@ -45,6 +45,112 @@ async def test_create_event_seated(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_create_event_past_date_rejected(client: AsyncClient) -> None:
+    """POST /events com event_date no passado deve retornar 400."""
+    token = await login_seeded_user(client, "organizer@eventify.com", "Organizer@2026")
+
+    response = await client.post(
+        "/events",
+        json={
+            "title": "Show no Passado",
+            "event_date": "2020-01-01T20:00:00Z",
+            "venue_name": "Arena Teste",
+            "capacity": 5,
+            "price": "49.90",
+            "type": "SEATED",
+        },
+        headers=auth_headers(token),
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_update_event_owner_success(client: AsyncClient) -> None:
+    """PUT /events/{id} pelo organizador dono deve atualizar os campos."""
+    token = await login_seeded_user(client, "organizer@eventify.com", "Organizer@2026")
+
+    create_response = await client.post(
+        "/events",
+        json={
+            "title": "Show Original",
+            "event_date": "2026-12-25T20:00:00Z",
+            "venue_name": "Arena Original",
+            "capacity": 5,
+            "price": "49.90",
+            "type": "SEATED",
+        },
+        headers=auth_headers(token),
+    )
+    event_id = create_response.json()["id"]
+
+    update_response = await client.put(
+        f"/events/{event_id}",
+        json={"title": "Show Atualizado", "venue_name": "Arena Nova"},
+        headers=auth_headers(token),
+    )
+    assert update_response.status_code == 200
+    data = update_response.json()
+    assert data["title"] == "Show Atualizado"
+    assert data["venue_name"] == "Arena Nova"
+    assert data["capacity"] == 5
+
+
+@pytest.mark.asyncio
+async def test_update_event_past_date_rejected(client: AsyncClient) -> None:
+    """PUT /events/{id} com nova data no passado deve retornar 400."""
+    token = await login_seeded_user(client, "organizer@eventify.com", "Organizer@2026")
+
+    create_response = await client.post(
+        "/events",
+        json={
+            "title": "Show para Atualizar",
+            "event_date": "2026-12-25T20:00:00Z",
+            "venue_name": "Arena Teste",
+            "capacity": 5,
+            "price": "49.90",
+            "type": "SEATED",
+        },
+        headers=auth_headers(token),
+    )
+    event_id = create_response.json()["id"]
+
+    update_response = await client.put(
+        f"/events/{event_id}",
+        json={"event_date": "2020-01-01T20:00:00Z"},
+        headers=auth_headers(token),
+    )
+    assert update_response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_update_event_non_owner_forbidden(client: AsyncClient) -> None:
+    """PUT /events/{id} por outro organizador deve retornar 403."""
+    owner_token = await login_seeded_user(client, "organizer@eventify.com", "Organizer@2026")
+
+    create_response = await client.post(
+        "/events",
+        json={
+            "title": "Show Protegido",
+            "event_date": "2026-12-25T20:00:00Z",
+            "venue_name": "Arena Teste",
+            "capacity": 5,
+            "price": "49.90",
+            "type": "SEATED",
+        },
+        headers=auth_headers(owner_token),
+    )
+    event_id = create_response.json()["id"]
+
+    client_token = await login_seeded_user(client, "client1@eventify.com", "Client1@2026")
+    update_response = await client.put(
+        f"/events/{event_id}",
+        json={"title": "Tentativa Invasora"},
+        headers=auth_headers(client_token),
+    )
+    assert update_response.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_create_event_client_forbidden(client: AsyncClient) -> None:
     """POST /events como CLIENT deve retornar 403."""
     token = await login_seeded_user(client, "client1@eventify.com", "Client1@2026")

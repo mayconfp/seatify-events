@@ -1,6 +1,6 @@
 """Rotas do modulo de ingressos.
 
-Thin handlers para reserva de assentos, listagem de ingressos
+Thin routers para reserva de assentos, listagem de ingressos
 e acesso publico por share hash.
 """
 

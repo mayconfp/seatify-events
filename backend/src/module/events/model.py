@@ -11,7 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.base import BaseModel, varchar_enum
@@ -53,6 +53,12 @@ class Event(BaseModel):
         varchar_enum(EventType, name="event_type"),
         nullable=False,
     )
+    genre: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    age_rating: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    director: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    release_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    vote_average: Mapped[Decimal | None] = mapped_column(Numeric(3, 1), nullable=True)
+    cast: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
 
     # Relacionamentos (carregados explicitamente nas queries que precisarem)
     organizer = relationship("User", foreign_keys=[organizer_id], lazy="noload")

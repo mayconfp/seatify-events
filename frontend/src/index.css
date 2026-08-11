@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-200 antialiased font-sans selection:bg-primary/30 selection:text-white min-h-screen flex flex-col transition-colors duration-300;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800 transition-colors duration-300;
+  }
+  
+  .event-card {
+    @apply bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/50 shadow-sm transition-all duration-500 hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02];
+  }
+  
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}

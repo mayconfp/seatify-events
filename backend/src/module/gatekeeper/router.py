@@ -1,6 +1,6 @@
 """Rotas do modulo de portaria (gatekeeper).
 
-Thin handler para validacao de ingressos na entrada do evento.
+Thin router para validacao de ingressos na entrada do evento.
 """
 
 from typing import Annotated
