@@ -46,6 +46,9 @@ export const GatekeeperScan = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  
+  // Ref para contornar o Stale Closure da câmera
+  const selectedEventIdRef = useRef<string>(selectedEventId);
 
   // Carrega a lista de eventos para o porteiro escolher qual sessao esta validando.
   useEffect(() => {
@@ -68,6 +71,8 @@ export const GatekeeperScan = () => {
     if (selectedEventId) {
       localStorage.setItem(SELECTED_EVENT_STORAGE_KEY, selectedEventId);
     }
+    // Mantém a ref sempre sincronizada com o estado mais atual
+    selectedEventIdRef.current = selectedEventId;
   }, [selectedEventId]);
 
   // Keep focus on input for physical scanners
@@ -78,14 +83,16 @@ export const GatekeeperScan = () => {
   const handleValidate = useCallback(
     async (rawValue: string) => {
       const value = rawValue.trim();
-      if (!value || !selectedEventId) return;
+      const currentEventId = selectedEventIdRef.current;
+      
+      if (!value || !currentEventId) return;
 
       setLoading(true);
       setResult(null);
       try {
         const response = await api.post<ValidationResponse>('/gatekeeper/validate', {
           qr_token_or_hash: value,
-          event_id: selectedEventId,
+          event_id: currentEventId,
         });
         setResult(response.data);
       } catch (error: any) {
@@ -102,7 +109,7 @@ export const GatekeeperScan = () => {
         setToken('');
       }
     },
-    [selectedEventId]
+    [] // Sem dependências para não recriar a função e quebrar a câmera
   );
 
   const handleFormSubmit = (e: React.FormEvent) => {
