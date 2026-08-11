@@ -11,6 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Respons
 from src.deps import SessionDep, limiter, require_role
 from src.module.auth.model import User, UserRole
 from src.module.events import service
+from src.module.tickets.service import _release_expired_pending_seats
 from src.module.events.schemas import (
     CreateEventSchema,
     EventAnalyticsResponseSchema,
@@ -154,10 +155,10 @@ async def get_event_seats(
     """
     seats = await service.get_event_seats(session, event_id)
     
-    # Engatilha limpeza fisica de assentos PENDING expirados em background
-    # apos a resposta ser enviada ao cliente (nao bloqueia a requisicao).
-    background_tasks.add_task(service._release_expired_pending_seats, session, event_id)
-    
+    # Se houver assentos pendentes que ja passaram de 10 min, eles travam
+    # a visualizacao. O ideal e que um worker faca isso, mas aqui disparamos
+    # sob demanda como fallback se o worker estiver atrasado.
+    background_tasks.add_task(_release_expired_pending_seats, session, event_id)
     return [SeatResponseSchema.model_validate(s) for s in seats]
 
 
