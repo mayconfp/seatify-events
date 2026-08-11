@@ -148,7 +148,7 @@ export const GatekeeperScan = () => {
           html5QrCode.pause(true);
           handleValidate(decodedText);
         },
-        (error) => {
+        (_error) => {
           // Ignora quadros vazios
         }
       );

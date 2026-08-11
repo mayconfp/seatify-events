@@ -5,7 +5,6 @@ import type { PaginatedEvents } from '../../types';
 import { useDebounce } from '../../hooks/useDebounce';
 import { X, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
 
 export const SearchOverlay = () => {
   const { isOpen, setIsOpen, searchQuery, setSearchQuery } = useSearchStore();

@@ -1,8 +1,5 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Star, User } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import type { TmdbMovie } from '../../types';
 

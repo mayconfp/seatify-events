@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api/axios';
-import type { Event, Seat, TmdbMovie } from '../../types';
+import type { Event, Seat } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { SeatMap } from '../../components/event/SeatMap';
 import { Button } from '../../components/ui/Button';

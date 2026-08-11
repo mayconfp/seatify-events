@@ -77,8 +77,8 @@ export const EventCreateTab = ({ mode, initialEvent, onSuccess, onCancel }: Even
         setSelectedMovie({
           id: Number(initialEvent.external_tmdb_id),
           title: initialEvent.title,
-          overview: initialEvent.description,
-          poster_path: initialEvent.poster_url,
+          overview: initialEvent.description || null,
+          poster_path: initialEvent.poster_url || null,
           release_date: null
         });
       }
