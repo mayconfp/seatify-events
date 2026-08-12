@@ -47,6 +47,7 @@ A arquitetura de reembolsos segue protocolos restritivos para blindar tanto o pr
 Iniciamos o desenvolvimento com uma estrutura genérica de gestão de eventos (nos moldes de plataformas como a *Sympla*). No entanto, avaliando as sugestões de referência do edital (*Ingresso.com*), reposicionamos estrategicamente o produto para o nicho especializado de **Cinema**:
 - **Foco em Poltronas Marcadas (`SEATED`)**: Substituição de modelos genéricos de pista por mapas de sala interativos e numerados em perspectiva.
 - **Integração Enriquecida com TMDb**: Implementação de carrossel de filmes em alta (*trending*), filtros dinâmicos por gênero cinematográfico, badges de classificação indicativa (idade) e exibição detalhada de elenco e equipe.
+- **Modos (Dark/Light)**: A plataforma possui um Design System construído com Tailwind, agregando micro-interações, efeitos *Glassmorphism* (fundo desfocado) e um seletor nativo de Tema Escuro/Claro persistido na sessão do usuário.
 
 ---
 

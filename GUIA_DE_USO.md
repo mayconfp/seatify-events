@@ -13,6 +13,7 @@ A criação da conta é focada em conversão: o cliente informa apenas Nome, E-m
 ### Acesso e Catálogo
 Ao abrir a aplicação, o usuário visualiza um carrossel 3D imersivo (Coverflow) destacando os filmes em alta (*trending*) da semana consumidos via TMDb.
 É possível navegar pelo grid de programação ou utilizar os filtros rápidos por gênero cinematográfico (Ação, Comédia, Drama, Ficção Científica, Terror, Romance, Animação).
+A plataforma também conta com suporte nativo a Tema Claro e Tema Escuro (Dark Mode), que pode ser alternado a qualquer momento no cabeçalho.
 
 ### Seleção de Sessão
 Ao clicar em um filme, o sistema exibe os detalhes completos (pôster, sinopse, classificação indicativa brasileira, diretor e elenco) e agrupa as sessões disponíveis por local (*Cinemark-style*), permitindo escolher a data e o horário desejados.
