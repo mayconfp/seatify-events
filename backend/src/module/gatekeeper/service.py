@@ -62,7 +62,7 @@ async def validate_ticket_entry(
                 Ticket.id == ticket_id,
                 Ticket.deleted_at.is_(None),
             )
-            .with_for_update()
+            .with_for_update(of=Ticket)
         )
         ticket = result.scalar_one_or_none()
     except (ValueError, KeyError):
@@ -78,7 +78,7 @@ async def validate_ticket_entry(
                 Ticket.share_link_hash == qr_token_or_hash,
                 Ticket.deleted_at.is_(None),
             )
-            .with_for_update()
+            .with_for_update(of=Ticket)
         )
         ticket = result.scalar_one_or_none()
 

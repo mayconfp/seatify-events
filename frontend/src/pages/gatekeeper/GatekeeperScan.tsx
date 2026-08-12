@@ -46,7 +46,7 @@ export const GatekeeperScan = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-  
+
   // Ref para contornar o Stale Closure da câmera
   const selectedEventIdRef = useRef<string>(selectedEventId);
 
@@ -84,7 +84,7 @@ export const GatekeeperScan = () => {
     async (rawValue: string) => {
       const value = rawValue.trim();
       const currentEventId = selectedEventIdRef.current;
-      
+
       if (!value || !currentEventId) return;
 
       setLoading(true);
@@ -101,7 +101,7 @@ export const GatekeeperScan = () => {
         } else {
           setResult({
             status: 'INVALID',
-            message: 'Erro de conexão ou token malformado.',
+            message: 'Erro de conexão ou token mal-formado.',
           });
         }
       } finally {
@@ -147,7 +147,7 @@ export const GatekeeperScan = () => {
 
       const html5QrCode = new Html5Qrcode("reader");
       html5QrCodeRef.current = html5QrCode;
-      
+
       await html5QrCode.start(
         { facingMode: mode },
         { fps: 10, qrbox: { width: 250, height: 250 } },
