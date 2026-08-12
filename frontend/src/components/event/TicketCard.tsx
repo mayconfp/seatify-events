@@ -96,6 +96,13 @@ export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
             level="H"
           />
         </div>
+        
+        <div className="text-center mb-4">
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Código (Manual)</p>
+          <p className="text-sm font-mono font-bold text-slate-200 tracking-wider bg-slate-900/50 px-3 py-1 rounded-md border border-slate-700">
+            {ticket.share_link_hash}
+          </p>
+        </div>
 
         {seat && (
           <div className="text-center mb-6">
