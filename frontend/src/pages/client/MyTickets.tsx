@@ -4,26 +4,36 @@ import type { Ticket as TicketType } from '../../types';
 import { TicketCard } from '../../components/event/TicketCard';
 import { Loader2, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
+import { useAuthStore } from '../../store/authStore';
 
 export const MyTickets = () => {
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
     const fetchTickets = async () => {
       try {
         const response = await api.get<TicketType[]>('/tickets/me');
         setTickets(response.data);
-      } catch (error) {
-        toast.error('Não foi possível carregar seus ingressos.');
+      } catch (error: any) {
+        if (error.response?.status !== 401) {
+          toast.error('Não foi possível carregar seus ingressos.');
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchTickets();
-  }, []);
+  }, [user, navigate]);
 
   if (loading) {
     return (
