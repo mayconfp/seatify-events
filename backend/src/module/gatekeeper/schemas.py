@@ -16,6 +16,7 @@ class ValidationStatus(str, enum.Enum):
     INVALID = "INVALID"
     ALREADY_USED = "ALREADY_USED"
     WRONG_EVENT = "WRONG_EVENT"
+    WRONG_TIME = "WRONG_TIME"
 
 
 class ValidateEntrySchema(BaseModel):

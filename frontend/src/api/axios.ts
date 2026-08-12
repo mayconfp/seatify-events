@@ -23,8 +23,12 @@ api.interceptors.response.use(
     // Tratamento global de erros
     if (error.response) {
       if (error.response.status === 401) {
-        useAuthStore.getState().logout();
-        toast.error('Sessão expirada. Faça login novamente.');
+        // Ignora o 401 se a rota for de login, pois o proprio componente lida com o erro (ex: credenciais incorretas)
+        const isAuthRoute = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
+        if (!isAuthRoute) {
+          useAuthStore.getState().logout();
+          toast.error('Sessão expirada. Faça login novamente.');
+        }
         // SPA-friendly: nao recarrega a pagina, apenas limpa o estado.
         // O componente App.tsx ou um guard de rota deve redirecionar
         // automaticamente para /login ao detectar que user === null.

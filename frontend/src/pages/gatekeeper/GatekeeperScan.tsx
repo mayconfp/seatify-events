@@ -17,7 +17,7 @@ import {
 import { cn } from '../../utils/cn';
 import { toast } from 'sonner';
 
-type ValidationStatus = 'IDLE' | 'VALID' | 'ALREADY_USED' | 'WRONG_EVENT' | 'INVALID';
+type ValidationStatus = 'IDLE' | 'VALID' | 'ALREADY_USED' | 'WRONG_EVENT' | 'INVALID' | 'WRONG_TIME';
 
 interface ValidationResponse {
   status: ValidationStatus;
@@ -200,6 +200,7 @@ export const GatekeeperScan = () => {
       case 'VALID': return 'bg-green-600 text-white';
       case 'ALREADY_USED': return 'bg-amber-500 text-white';
       case 'WRONG_EVENT': return 'bg-purple-600 text-white';
+      case 'WRONG_TIME': return 'bg-orange-600 text-white';
       case 'INVALID': return 'bg-red-600 text-white';
       default: return 'bg-slate-950 text-slate-300';
     }
@@ -210,6 +211,7 @@ export const GatekeeperScan = () => {
       case 'VALID': return <CheckCircle2 className="w-24 h-24 mb-6" />;
       case 'ALREADY_USED': return <AlertTriangle className="w-24 h-24 mb-6" />;
       case 'WRONG_EVENT': return <AlertTriangle className="w-24 h-24 mb-6" />;
+      case 'WRONG_TIME': return <AlertTriangle className="w-24 h-24 mb-6" />;
       case 'INVALID': return <XCircle className="w-24 h-24 mb-6" />;
       default: return null;
     }

@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-200 antialiased font-sans selection:bg-primary/30 selection:text-white min-h-screen flex flex-col transition-colors duration-300;
+    @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-200 antialiased font-sans selection:bg-primary/30 selection:text-white min-h-screen flex flex-col transition-colors duration-300 overflow-x-hidden;
   }
 }
 

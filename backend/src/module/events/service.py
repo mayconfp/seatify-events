@@ -187,10 +187,12 @@ async def search_tmdb_movies(query: str) -> TmdbSearchResponseSchema:
     )
 
 
+_trending_cache: dict[str, dict] = {}
+
 async def get_tmdb_trending(
     time_window: str = "week",
 ) -> TmdbTrendingResponseSchema:
-    """Retorna filmes em alta (trending) do TMDB.
+    """Retorna filmes em alta (trending) do TMDB com cache em memoria.
 
     Args:
         time_window: "day" ou "week".
@@ -200,6 +202,13 @@ async def get_tmdb_trending(
     """
     if time_window not in ("day", "week"):
         raise validation_error("time_window deve ser 'day' ou 'week'")
+
+    now = aware_utcnow()
+    
+    # Verifica se existe cache valido 6 hrs
+    cached = _trending_cache.get(time_window)
+    if cached and cached["expires_at"] > now:
+        return cached["data"]
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
@@ -228,7 +237,16 @@ async def get_tmdb_trending(
         for item in data.get("results", [])
         if item.get("media_type", "movie") == "movie"
     ]
-    return TmdbTrendingResponseSchema(results=movies, time_window=time_window)
+    
+    response_schema = TmdbTrendingResponseSchema(results=movies, time_window=time_window)
+    
+    # Salva no cache em memoria
+    _trending_cache[time_window] = {
+        "expires_at": now + timedelta(hours=6),
+        "data": response_schema
+    }
+    
+    return response_schema
 
 
 async def get_tmdb_movie_details(tmdb_id: int) -> TmdbMovieSchema:

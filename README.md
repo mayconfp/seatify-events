@@ -15,10 +15,11 @@ O back-end foi construído em **Python com FastAPI**, adotando uma estrutura mod
 ### 2. Persistência Assíncrona e Concorrência Segura (SQLAlchemy 2.0 Async)
 - **AsyncIO + AsyncPG**: Toda a camada de banco de dados opera de forma assíncrona para maximizar o throughput da API sob alta carga.
 - **Prevenção de Venda Duplicada (*Double-Booking*)**: Nas rotas críticas de reserva e fechamento de carrinho, utilizamos bloqueios atômicos de linha no PostgreSQL (`SELECT ... FOR UPDATE`). Se múltiplos usuários tentarem comprar o mesmo assento no mesmo milissegundo, a concorrência é enfileirada de forma segura pelo banco.
-- **Cache Local de Metadados do TMDb**: Para otimizar a performance e eliminar latências externas em tempo de execução, os metadados complementares do filme (elenco, diretor, nota e data de estreia) são buscados na API do TMDb e persistidos de forma estruturada (`JSONB`) diretamente na tabela `events` no momento da criação da sessão.
+- **Limpeza Assíncrona em Memória (Background Task)**: Liberação assíncrona de carrinhos abandonados através de task nativa (`asyncio.sleep`) vinculada ao ciclo de vida da aplicação, evitando dependências pesadas de infraestrutura como Redis ou Celery para rotinas periódicas simples.
+- **Integração e Cache do TMDb**: Para otimizar a performance e contornar limites de taxa (Rate Limit) da API externa em uma infraestrutura enxuta, os metadados de filmes e a lista de "Filmes em Alta" (Trending) são protegidos. O Trending utiliza um Cache em Memória nativo (variável global) com TTL de 6 horas, para consumir pouca memória RAM, enquanto os metadados das sessões criadas são persistidos de forma estruturada (`JSONB`) diretamente na tabela `events`.
 
 ### 3. Resiliência e Idempotência em Pagamentos (Stripe & Webhooks)
-- **Idempotência em Dupla Camada**: O processador de webhooks do Stripe protege contra entregas duplicadas (*at-least-once delivery*) utilizando um *fast-path* de leitura na tabela `processed_webhook_events` combinado com restrições de unicidade (`UNIQUE INDEX`) no PostgreSQL.
+- **Idempotência em Dupla Camada**: O processador de webhooks do Stripe protege contra entregas duplicadas (*at-least-once delivery*) utilizando leitura prévia combinada com restrições de unicidade (`UNIQUE INDEX`) no PostgreSQL. Em caso de colisão simultânea de requisições concorrentes idênticas, a delegação para o banco garante que o erro de integridade (`IntegrityError`) atue como trava de segurança definitiva.
 - **Tratamento de Edge Cases**: Pagamentos efetuados após a expiração do prazo de 15 minutos de reserva são interceptados graciosamente, registrando logs de auditoria e respondendo com HTTP 200 ao Stripe para cessar retentativas em loop, sem quebrar o servidor.
 
 ---
@@ -36,13 +37,15 @@ Iniciamos o desenvolvimento com uma estrutura genérica de gestão de eventos (n
 - **Proteção contra IDOR**: As rotas de gerenciamento e relatórios do organizador validam rigorosamente a propriedade do recurso (`Event.organizer_id == current_user.id`), impedindo acessos cruzados.
 - **QR Codes Infalsificáveis**: Os ingressos geram um token JWT assinado digitalmente (`create_qr_token`) contendo apenas metadados opacos (`ticket_id` e `event_id`). 
 - **Validação Segura na Portaria (*Gatekeeper*)**: O aplicativo da portaria decodifica o token, valida a assinatura criptográfica, rejeita tokens de eventos errados (`WRONG_EVENT`) e barra reutilizações (`ALREADY_USED`) através de travas transacionais.
+  - *Evolução de Regra de Negócio (Janela de Tempo)*: Inicialmente, o sistema permitia a validação baseada apenas na correspondência de IDs. Evoluímos o modelo para implementar uma **Janela de Tempo Estrita** (`WRONG_TIME`). Agora, o ingresso só é considerado válido se o check-in ocorrer entre **2 horas antes e 4 horas depois** do horário exato da sessão. Isso blinda o cinema contra erros humanos do porteiro (ao selecionar o evento da data errada no aplicativo) e fraudes de clientes comparecendo em dias futuros/passados.
 - **Rate Limiting**: Proteção contra ataques de negação de serviço (DoS) e scraping nas rotas públicas e de autenticação utilizando o middleware `SlowAPI`.
+- **Prevenção de Supply Chain Attacks (Front-End)**: O ambiente de desenvolvimento isola dependências maliciosas forçando o uso de instalação limpa travada no Lockfile (`npm ci`) associado ao bloqueio de injeção de scripts arbitrários (`--ignore-scripts`).
 
 ---
 
 ## Tecnologias Utilizadas
 
-- **Front-End**: React 18, Vite, TypeScript, Tailwind CSS, Zustand (estado global e persistência), React Router DOM, Lucide Icons, Sonner (notificações), Html5-qrcode (leitura de câmera).
+- **Front-End**: React 18, Vite, TypeScript, Tailwind CSS, Zustand (estado global com persistência no `localStorage`), React Router DOM, Lucide Icons, Sonner (notificações), Axios (interceptadores globais blindados e sensíveis ao contexto), Html5-qrcode (leitura de câmera em stream continuo).
 - **Back-End**: Python 3.10+, FastAPI, SQLAlchemy (Async/AsyncPG), Pydantic v2, Alembic (migrações de banco), SlowAPI, PyJWT, Cryptography (Fernet).
 - **Banco de Dados**: PostgreSQL.
 
@@ -51,11 +54,12 @@ Iniciamos o desenvolvimento com uma estrutura genérica de gestão de eventos (n
 ## Processo de Desenvolvimento e Uso de Inteligência Artificial
 
 Em atendimento direto à diretriz do edital sobre o uso transparente de Inteligência Artificial:
-- **Auxílio da IA**: A ferramenta foi utilizada como um par de programação (*co-pilot*) para agilizar a criação de estruturas repetitivas de código (como schemas Pydantic, rotas auxiliares em routers e estruturação inicial de componentes de interface).
+- **Auxílio da IA**: A ferramenta foi utilizada como um par de programação (*co-pilot e Antigravity*) para agilizar a criação de estruturas repetitivas de código (como schemas Pydantic, rotas auxiliares em routers e estruturação inicial de componentes de interface).
 - **Autoria Humana**: As decisões críticas de engenharia foram inteiramente conduzidas pelo desenvolvedor:
   - Concepção do modelo de concorrência atômica com `SELECT ... FOR UPDATE` para zerar falhas de *double-booking*.
   - Tratamento de resiliência e idempotência em dupla camada para webhooks do Stripe.
   - Arquitetura de segurança para validação de ingressos na portaria via tokens JWT criptografados.
+  - **Auditoria de Regras de Negócio**: Identificação proativa da falha lógica na portaria (que inicialmente validava ingressos ignorando a distância das datas) e direcionamento da IA para estruturar e codificar a barreira temporal estrita da Janela de Tempo (`WRONG_TIME`).
 
 ---
 
@@ -82,16 +86,19 @@ A arquitetura e as escolhas de engenharia do Eventify baseiam-se inteiramente em
 - Node.js 22+ e npm 10+ instalados.
 - Docker e Docker Compose instalados (para subir o banco de dados via container).
 
-### 1. Configurando e Rodando o Back-End
-1. Pelo terminal, entre na pasta do servidor:
-   ```bash
-   cd backend
-   ```
-2. Suba o container do banco de dados PostgreSQL utilizando o Docker:
+### 1. Configurando e Rodando o Banco de Dados e o Back-End
+1. Na **raiz do projeto**, crie o arquivo de variáveis de ambiente principal:
+   - Duplique o arquivo `.env.example` (que está na raiz) e renomeie para `.env`.
+   - Preencha as chaves da API do TMDb e as chaves JWT/Fernet (há instruções no arquivo).
+2. Ainda na **raiz do projeto**, suba o container do PostgreSQL utilizando o Docker:
    ```bash
    docker compose up -d
    ```
-3. Sincronize as dependências e crie o ambiente virtual utilizando o `uv`:
+3. Pelo terminal, entre na pasta do servidor (back-end):
+   ```bash
+   cd backend
+   ```
+4. Sincronize as dependências e crie o ambiente virtual utilizando o `uv`:
    ```bash
    uv sync
    ```
@@ -113,9 +120,11 @@ A arquitetura e as escolhas de engenharia do Eventify baseiam-se inteiramente em
    ```bash
    cd frontend
    ```
-2. Instale as dependências ignorando scripts opcionais (recomendado para maior compatibilidade):
+2. Crie o arquivo de variáveis de ambiente:
+   - Duplique o arquivo `.env.example` e renomeie para `.env`.
+3. Instale as dependências de forma segura, bloqueando scripts maliciosos de terceiros:
    ```bash
-   npm ci --ignore-scripts
+   npm ci --ignore-scripts ou npm install
    ```
 3. Inicie o servidor de desenvolvimento do Vite:
    ```bash

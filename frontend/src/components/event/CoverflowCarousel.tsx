@@ -41,7 +41,12 @@ export const CoverflowCarousel = ({ events }: CoverflowCarouselProps) => {
 
     // Transformations
     const sign = Math.sign(offset);
-    const translateX = sign * absOffset * 60; // percentage
+    
+    // Responsividade para evitar estouro horizontal em mobile
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const offsetPercentage = isMobile ? 40 : 60; // No mobile move 40%, no desktop 60%
+    
+    const translateX = sign * absOffset * offsetPercentage; // percentage
     const rotateY = sign * absOffset * -45; // degrees
     const scale = 1 - absOffset * 0.2;
     const zIndex = 50 - absOffset * 10;

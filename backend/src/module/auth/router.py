@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from src.deps import LoggedUserDep, SessionDep, limiter
 from src.module.auth import service
 from src.module.auth.schemas import (
+    LoginSchema,
     RegisterSchema,
     TokenResponseSchema,
     UserResponseSchema,
@@ -41,8 +42,6 @@ async def login(
 
     Compativel com Swagger UI /docs — o campo 'username' recebe o email.
     """
-    from src.module.auth.schemas import LoginSchema
-
     schema = LoginSchema(email=form_data.username, password=form_data.password)
     user = await service.authenticate_user(session, schema)
     token = create_access_token(user_id=user.id, role=user.role.value)

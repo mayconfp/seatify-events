@@ -19,38 +19,38 @@ export const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 w-full glass border-b transition-colors duration-300">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 text-primary font-bold text-2xl tracking-tighter">
-          <img src="/eventify-img.png" alt="Eventify Logo" className="w-8 h-8 object-contain" />
-          <span>Eventify</span>
+        <Link to="/" className="flex items-center gap-1 sm:gap-2 text-primary font-bold text-xl sm:text-2xl tracking-tighter shrink-0 mr-1 sm:mr-0">
+          <img src="/eventify-img.png" alt="Eventify Logo" className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
+          <span className="hidden min-[360px]:block">Eventify</span>
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-1 sm:gap-4">
           {/* Search Button */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsOpen(true)}
-            className="text-zinc-600 dark:text-zinc-400"
+            className="text-zinc-600 dark:text-zinc-400 w-8 h-8 sm:w-10 sm:h-10 shrink-0"
             title="Buscar"
           >
-            <Search className="w-5 h-5" />
+            <Search className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-zinc-600 dark:text-zinc-400" title="Alternar Tema">
-            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-zinc-600 dark:text-zinc-400 w-8 h-8 sm:w-10 sm:h-10 shrink-0" title="Alternar Tema">
+            {theme === 'dark' ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
           </Button>
 
           <div className="h-6 w-px bg-zinc-300 dark:bg-zinc-700 mx-1 hidden sm:block" />
 
           {!isAuthenticated() ? (
-            <>
+            <div className="flex items-center gap-1 sm:gap-2">
               <Link to="/login">
-                <Button variant="ghost">Entrar</Button>
+                <Button variant="ghost" size="sm" className="px-2 sm:px-4 text-xs sm:text-sm h-8 sm:h-10">Entrar</Button>
               </Link>
               <Link to="/register">
-                <Button>Criar Conta</Button>
+                <Button size="sm" className="px-2 sm:px-4 text-xs sm:text-sm h-8 sm:h-10 whitespace-nowrap">Criar Conta</Button>
               </Link>
-            </>
+            </div>
           ) : (
             <div className="flex items-center gap-4">
               {user?.role === 'CLIENT' && (

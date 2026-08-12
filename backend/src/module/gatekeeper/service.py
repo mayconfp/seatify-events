@@ -15,11 +15,14 @@ import logging
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.module.gatekeeper.schemas import ValidationResultSchema, ValidationStatus
 from src.module.tickets.model import Ticket, TicketStatus
+from src.util.datetime_utils import aware_utcnow
 from src.util.jwt_utils import decode_qr_token
+from datetime import timedelta
 
 logger = logging.getLogger("eventify.gatekeeper.service")
 
@@ -54,6 +57,7 @@ async def validate_ticket_entry(
 
         result = await session.execute(
             select(Ticket)
+            .options(joinedload(Ticket.event))
             .where(
                 Ticket.id == ticket_id,
                 Ticket.deleted_at.is_(None),
@@ -69,6 +73,7 @@ async def validate_ticket_entry(
     if ticket is None:
         result = await session.execute(
             select(Ticket)
+            .options(joinedload(Ticket.event))
             .where(
                 Ticket.share_link_hash == qr_token_or_hash,
                 Ticket.deleted_at.is_(None),
@@ -89,6 +94,20 @@ async def validate_ticket_entry(
         return ValidationResultSchema(
             status=ValidationStatus.WRONG_EVENT,
             message="Ingresso pertencente a outro evento",
+            ticket_id=ticket.id,
+        )
+
+    # 5. Verifica a Janela de Tempo (Time Window)
+    # Entrada permitida de 2 horas antes ate 4 horas depois do inicio
+    now = aware_utcnow()
+    event_time = ticket.event.event_date
+    window_start = event_time - timedelta(hours=2)
+    window_end = event_time + timedelta(hours=4)
+
+    if not (window_start <= now <= window_end):
+        return ValidationResultSchema(
+            status=ValidationStatus.WRONG_TIME,
+            message="Ingresso fora do horario permitido da sessao",
             ticket_id=ticket.id,
         )
 

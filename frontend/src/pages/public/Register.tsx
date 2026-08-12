@@ -71,14 +71,17 @@ export const Register = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <Input 
-            type="password"
-            placeholder="Sua senha"
-            icon={<Lock className="w-4 h-4" />}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div>
+            <Input 
+              type="password"
+              placeholder="Sua senha"
+              icon={<Lock className="w-4 h-4" />}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-1">Mínimo de 8 caracteres.</p>
+          </div>
           
           <Button type="submit" className="w-full mt-6" isLoading={loading}>
             Cadastrar
