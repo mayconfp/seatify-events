@@ -4,6 +4,9 @@ Aplicação fullstack desenvolvida para o **Desafio Elite Dev 2026 (Verzel)**. O
 
 > 📖 **[Clique aqui para ler o Guia de Uso Completo (Manual da Plataforma)](./GUIA_DE_USO.md)**
 
+> 🚀 **Acesso ao Projeto Online:** [https://seatify-events.vercel.app/](https://seatify-events.vercel.app/)
+> *(Front-End hospedado na Vercel, Back-End e Banco de Dados hospedados no Render)*
+
 ---
 
 ## Decisões de Arquitetura e Engenharia de Software
