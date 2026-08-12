@@ -2,6 +2,8 @@
 
 Aplicação fullstack desenvolvida para o **Desafio Elite Dev 2026 (Verzel)**. O projeto simula um ecossistema completo de bilheteria de cinema, cobrindo desde a busca de filmes via API externa (TMDb) e cadastro de sessões pelo organizador, até a seleção de assentos em tempo real com mapas em perspectiva, checkout integrado ao Stripe, emissão de ingressos com QR Code criptografado (JWT) e validação segura na portaria (*Gatekeeper*).
 
+> 📖 **[Clique aqui para ler o Guia de Uso Completo (Manual da Plataforma)](./GUIA_DE_USO.md)**
+
 ---
 
 ## Decisões de Arquitetura e Engenharia de Software
@@ -47,6 +49,7 @@ Iniciamos o desenvolvimento com uma estrutura genérica de gestão de eventos (n
 
 ## Segurança e Regras de Negócio
 
+- **Ocultação Automática de Sessões Expiradas (Catálogo Dinâmico)**: A listagem pública de eventos atua de forma estritamente temporal. No Back-End (`GET /events`), a query no PostgreSQL possui um filtro nativo (`Event.event_date >= aware_utcnow()`). Isso garante que, se uma sessão de cinema começar às 14h00, às 14h01 ela desaparece imediatamente do catálogo para os usuários. Isso elimina o risco de clientes comprarem ingressos para sessões que já começaram ou que já acabaram.
 - **Proteção contra IDOR**: As rotas de gerenciamento e relatórios do organizador validam rigorosamente a propriedade do recurso (`Event.organizer_id == current_user.id`), impedindo acessos cruzados.
 - **QR Codes Infalsificáveis**: Os ingressos geram um token JWT assinado digitalmente (`create_qr_token`) contendo apenas metadados opacos (`ticket_id` e `event_id`). 
 - **Validação Segura na Portaria (*Gatekeeper*)**: O aplicativo da portaria decodifica o token, valida a assinatura criptográfica, rejeita tokens de eventos errados (`WRONG_EVENT`) e barra reutilizações (`ALREADY_USED`) através de travas transacionais.
