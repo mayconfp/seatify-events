@@ -121,6 +121,11 @@ async def validate_ticket_entry(
 
     # 6. Verifica se o ticket foi cancelado
     if ticket.status == TicketStatus.CANCELLED:
+        logger.warning(
+            "TENTATIVA DE FRAUDE: Ingresso reembolsado %s tentou acesso no evento %s",
+            ticket.id,
+            event_id,
+        )
         return ValidationResultSchema(
             status=ValidationStatus.INVALID,
             message="Ingresso cancelado",

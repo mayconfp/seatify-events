@@ -127,6 +127,12 @@ class SeatResponseSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CancelPendingSeatsSchema(BaseModel):
+    """Payload para cancelar assentos pendentes do proprio usuario."""
+
+    seat_numbers: list[str]
+
+
 class TmdbCastMemberSchema(BaseModel):
     """Membro do elenco retornado pela API do TMDb."""
 

@@ -22,6 +22,19 @@ O back-end foi construído em **Python com FastAPI**, adotando uma estrutura mod
 - **Idempotência em Dupla Camada**: O processador de webhooks do Stripe protege contra entregas duplicadas (*at-least-once delivery*) utilizando leitura prévia combinada com restrições de unicidade (`UNIQUE INDEX`) no PostgreSQL. Em caso de colisão simultânea de requisições concorrentes idênticas, a delegação para o banco garante que o erro de integridade (`IntegrityError`) atue como trava de segurança definitiva.
 - **Tratamento de Edge Cases**: Pagamentos efetuados após a expiração do prazo de 15 minutos de reserva são interceptados graciosamente, registrando logs de auditoria e respondendo com HTTP 200 ao Stripe para cessar retentativas em loop, sem quebrar o servidor.
 
+### 4. Ciclo de Vida do Assento e Resgate de Contexto (UX)
+Anteriormente, ao abandonar a tela de pagamento (Stripe Checkout), o usuário perdia totalmente o contexto da compra e as cadeiras ficavam "fantasmas". Evoluímos esse fluxo para um modelo robusto de retenção e edição:
+- **Reserva Temporária (`PENDING`)**: A cadeira é reservada em nome do usuário por 15 minutos, protegida por lock de banco.
+- **Interatividade no Front-End**: Ao voltar no mapa da sessão, o usuário visualiza seus próprios assentos "Pendentes" destacados na cor amarela. Ele possui liberdade total para clicar nos assentos pendentes e **retirá-los** do carrinho ou adicionar novos antes de prosseguir novamente para o pagamento, sem precisar iniciar o fluxo do zero.
+- **Liberação Automática**: Sem intervenção humana, assentos `PENDING` não pagos no prazo voltam silenciosamente para `AVAILABLE`, impedindo assentos bloqueados para sempre.
+
+### 5. Estorno Seguro e Automatizado (Regra de 2 Horas)
+A arquitetura de reembolsos segue protocolos restritivos para blindar tanto o produtor do evento (contra prejuízos de assentos vazios) quanto a segurança financeira da API:
+- **Barreira Temporal Dupla**: No Front-End (botão "Solicitar Reembolso") e no Back-End (`POST /tickets/{id}/refund`), o estorno só é permitido se o cancelamento ocorrer até **2 horas antes** do início do filme. Pedidos tardios são bloqueados com erro `400 Bad Request`.
+- **Desacoplamento Assíncrono**: Ao solicitar o estorno, a API comunica-se com a SDK do Stripe (`stripe.Refund.create`), mas **NÃO altera** o banco de dados no momento do clique. Isso evita que falhas de rede no gateway de pagamento deixem o ingresso cancelado, mas o dinheiro retido.
+- **Reversão Orientada a Webhook**: Apenas quando a operadora de cartão confirma a devolução do dinheiro, o Stripe envia um webhook (`charge.refunded`). Nosso servidor captura o evento, processa-o via idempotência, usa `SELECT FOR UPDATE` para travar o registro, marca o `Ticket` como `CANCELLED` e devolve a cadeira para o mapa como `AVAILABLE`.
+- **Anti-Fraude na Portaria**: Se um usuário agir de má fé, realizar o estorno e levar um "print" do QR Code para o cinema, o tablet do porteiro fará a interceptação com a tela `CANCELLED` e registrará um alerta `WARNING` no log do servidor.
+
 ---
 
 ## Evolução do Produto: Do Escopo Geral ao Nicho de Cinema

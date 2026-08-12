@@ -117,6 +117,7 @@ class Ticket(BaseModel):
         index=True,
     )
     seat_number: Mapped[str] = mapped_column(String(20), nullable=False)
+    payment_intent_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     qr_code_token: Mapped[str] = mapped_column(String(2048), nullable=False)
     share_link_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     status: Mapped[TicketStatus] = mapped_column(

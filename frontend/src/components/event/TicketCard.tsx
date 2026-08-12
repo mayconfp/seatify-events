@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { Ticket as TicketType } from '../../types';
+import { api } from '../../api/axios';
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -7,6 +9,8 @@ import { Button } from '../ui/Button';
 import { toast } from 'sonner';
 
 export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const event = ticket.event;
   const seat = ticket.seat;
 
@@ -22,6 +26,28 @@ export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
 
   const isValid = ticket.status === 'VALID';
   const isUsed = ticket.status === 'USED';
+  
+  // Regra de 2 horas
+  const isRefundable = isValid && (new Date(event.event_date).getTime() - new Date().getTime() > 2 * 60 * 60 * 1000);
+
+  const handleRefundClick = () => {
+    setShowConfirmModal(true);
+  };
+
+  const confirmRefund = async () => {
+    setShowConfirmModal(false);
+    setIsRefunding(true);
+    try {
+      await api.post(`/tickets/${ticket.id}/refund`);
+      toast.success('Solicitação enviada!', {
+        description: 'O estorno cairá na sua fatura e o ingresso será cancelado em instantes.'
+      });
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Erro ao solicitar reembolso');
+    } finally {
+      setIsRefunding(false);
+    }
+  };
 
   return (
     <div className="flex flex-col md:flex-row w-full max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl relative transition-colors duration-300">
@@ -75,15 +101,58 @@ export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
 
         <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Comprador</p>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{ticket.client_id}</p>
+            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Assento</p>
+            <p className="text-2xl font-black text-primary truncate max-w-[200px]">{ticket.seat_number}</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Preço</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-slate-100">R$ {Number(event.price || 0).toFixed(2).replace('.', ',')}</p>
+          <div className="text-right flex flex-col items-end gap-2">
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Preço</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-slate-100">R$ {Number(event.price || 0).toFixed(2).replace('.', ',')}</p>
+            </div>
+            {isRefundable && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-red-500 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs py-1 h-7"
+                onClick={handleRefundClick}
+                disabled={isRefunding}
+              >
+                {isRefunding ? 'Processando...' : 'Solicitar Reembolso'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Custom Confirm Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4 text-red-500">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Confirmação de Reembolso</h3>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
+              Tem certeza que deseja solicitar o reembolso? O valor será estornado na sua fatura e este ingresso será <strong>invalidado</strong> assim que o banco confirmar.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowConfirmModal(false)}
+                className="border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={confirmRefund}
+                className="bg-red-500 hover:bg-red-600 text-white border-0 shadow-lg shadow-red-500/20"
+              >
+                Sim, Reembolsar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Ticket Stub (QR Code side) */}
       <div className="w-full md:w-64 bg-slate-800 p-6 md:p-8 flex flex-col items-center justify-center relative">
@@ -96,7 +165,7 @@ export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
             level="H"
           />
         </div>
-        
+
         <div className="text-center mb-4">
           <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Código (Manual)</p>
           <p className="text-sm font-mono font-bold text-slate-200 tracking-wider bg-slate-900/50 px-3 py-1 rounded-md border border-slate-700">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../api/axios';
+import { useAuthStore } from '../../store/authStore';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Mail, Lock, User, Ticket, X } from 'lucide-react';
@@ -12,6 +13,7 @@ export const Register = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { setToken, setUser } = useAuthStore();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,8 +26,22 @@ export const Register = () => {
         role: 'CLIENT'
       });
       
-      toast.success('Conta criada com sucesso! Faça login.');
-      navigate('/login');
+      // Auto login
+      const loginParams = new URLSearchParams();
+      loginParams.append('username', email);
+      loginParams.append('password', password);
+      
+      const loginRes = await api.post<{ access_token: string }>('/auth/login', loginParams, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      
+      setToken(loginRes.data.access_token);
+      
+      const meResponse = await api.get('/auth/me');
+      setUser(meResponse.data);
+      
+      toast.success('Conta criada com sucesso! Bem-vindo(a).');
+      navigate('/');
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Erro ao criar conta.');
     } finally {

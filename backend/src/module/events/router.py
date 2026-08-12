@@ -18,6 +18,7 @@ from src.module.events.schemas import (
     EventListResponseSchema,
     EventResponseSchema,
     SeatResponseSchema,
+    CancelPendingSeatsSchema,
     TmdbMovieSchema,
     TmdbSearchResponseSchema,
     TmdbTrendingResponseSchema,
@@ -27,6 +28,7 @@ from src.module.events.schemas import (
 router = APIRouter(prefix="/events", tags=["Events"])
 
 OrganizerDep = Annotated[User, Depends(require_role([UserRole.ORGANIZER]))]
+ClientDep = Annotated[User, Depends(require_role([UserRole.CLIENT]))]
 
 
 @router.get("/tmdb/search", response_model=TmdbSearchResponseSchema)
@@ -160,6 +162,30 @@ async def get_event_seats(
     # sob demanda como fallback se o worker estiver atrasado.
     background_tasks.add_task(_release_expired_pending_seats, session, event_id)
     return [SeatResponseSchema.model_validate(s) for s in seats]
+
+
+@router.get("/{event_id}/seats/pending/me", response_model=list[str])
+async def get_my_pending_seats(
+    event_id: UUID,
+    session: SessionDep,
+    client: ClientDep,
+) -> list[str]:
+    """Retorna os assentos que estao aguardando pagamento pelo usuario logado."""
+    return await service.get_my_pending_seats(session, event_id, client.id)
+
+
+@router.post("/{event_id}/seats/cancel")
+async def cancel_pending_seats(
+    event_id: UUID,
+    schema: CancelPendingSeatsSchema,
+    session: SessionDep,
+    client: ClientDep,
+) -> dict[str, int]:
+    """Cancela assentos PENDING do usuario logado."""
+    released = await service.cancel_my_pending_seats(
+        session, event_id, client.id, schema.seat_numbers
+    )
+    return {"released": released}
 
 
 @router.put("/{event_id}", response_model=EventResponseSchema)

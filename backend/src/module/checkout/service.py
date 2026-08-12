@@ -40,7 +40,7 @@ logger = logging.getLogger("eventify.checkout.service")
 stripe.api_key = settings.stripe_secret_key
 
 _SUPPORTED_EVENT_TYPES = frozenset(
-    {"checkout.session.completed", "payment_intent.succeeded"}
+    {"checkout.session.completed", "payment_intent.succeeded", "charge.refunded"}
 )
 
 
@@ -101,7 +101,15 @@ async def process_payment_simulation(
         client_id=user.id,
         seat_numbers=schema.seat_numbers,
     )
-    await handle_payment_webhook(session, webhook_payload)
+    await _confirm_reservation_payment(
+        session,
+        stripe_event_id=webhook_payload.stripe_event_id,
+        event_type=webhook_payload.event_type,
+        event_id=webhook_payload.event_id,
+        client_id=webhook_payload.client_id,
+        seat_numbers=webhook_payload.seat_numbers,
+        payment_intent_id=f"pi_sim_{uuid.uuid4().hex[:16]}",
+    )
 
     return SimulatePaymentResponseSchema(
         status="succeeded",
@@ -118,6 +126,7 @@ async def _confirm_reservation_payment(
     event_id: UUID,
     client_id: UUID,
     seat_numbers: list[str],
+    payment_intent_id: str | None = None,
 ) -> int:
     """Confirma o pagamento de uma reserva com idempotencia.
 
@@ -205,6 +214,7 @@ async def _confirm_reservation_payment(
             client_id=client_id,
             event_id=event_id,
             seat_number=seat.seat_number,
+            payment_intent_id=payment_intent_id,
             qr_code_token="",  # placeholder ate flush
             share_link_hash=secrets.token_urlsafe(16),
             status=TicketStatus.VALID,
@@ -358,8 +368,8 @@ async def create_stripe_checkout_session(
     )
 
 
-def _extract_metadata(event: stripe.Event) -> tuple[UUID, UUID, list[str]]:
-    """Extrai (event_id, client_id, seat_numbers) dos metadados do evento Stripe.
+def _extract_metadata(event: stripe.Event) -> tuple[UUID, UUID, list[str], str | None]:
+    """Extrai (event_id, client_id, seat_numbers, payment_intent_id) dos metadados do evento Stripe.
 
     Suporta payloads de checkout.session.completed (Session) e
     payment_intent.succeeded (PaymentIntent). Ambos carregam metadata dict.
@@ -369,6 +379,13 @@ def _extract_metadata(event: stripe.Event) -> tuple[UUID, UUID, list[str]]:
     """
     data_object = event.get("data", {}).get("object") or {}
     metadata = data_object.get("metadata") or {}
+    
+    payment_intent_id = None
+    if event.get("type") == "checkout.session.completed":
+        payment_intent_id = data_object.get("payment_intent")
+    elif event.get("type") == "payment_intent.succeeded":
+        payment_intent_id = data_object.get("id")
+        
     try:
         event_id = UUID(metadata["event_id"])
         client_id = UUID(metadata["client_id"])
@@ -392,7 +409,7 @@ def _extract_metadata(event: stripe.Event) -> tuple[UUID, UUID, list[str]]:
             "Campo 'seat_numbers' do metadata deve ser uma lista de strings."
         )
 
-    return event_id, client_id, seat_numbers
+    return event_id, client_id, seat_numbers, payment_intent_id
 
 
 async def handle_stripe_webhook(
@@ -451,7 +468,11 @@ async def handle_stripe_webhook(
         )
         return
 
-    event_id, client_id, seat_numbers = _extract_metadata(stripe_event)
+    if event_type == "charge.refunded":
+        await _process_refund_webhook(session, stripe_event_id, stripe_event)
+        return
+
+    event_id, client_id, seat_numbers, payment_intent_id = _extract_metadata(stripe_event)
 
     await _confirm_reservation_payment(
         session,
@@ -460,4 +481,70 @@ async def handle_stripe_webhook(
         event_id=event_id,
         client_id=client_id,
         seat_numbers=seat_numbers,
+        payment_intent_id=payment_intent_id,
     )
+
+
+async def _process_refund_webhook(
+    session: AsyncSession,
+    stripe_event_id: str,
+    event: stripe.Event,
+) -> None:
+    """Processa o estorno (refund) escutando o webhook do Stripe.
+    
+    Garante idempotencia, bloqueia os tickets, marca como CANCELLED,
+    e devolve as cadeiras (Seat) para o status AVAILABLE.
+    """
+    data_object = event.get("data", {}).get("object") or {}
+    payment_intent_id = data_object.get("payment_intent")
+    
+    if not payment_intent_id:
+        return
+        
+    # Idempotencia
+    existing = await session.execute(
+        select(ProcessedWebhookEvent).where(
+            ProcessedWebhookEvent.stripe_event_id == stripe_event_id
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        logger.info("Refund webhook ja processado: %s", stripe_event_id)
+        return
+
+    # Trava tickets com esse pagamento
+    result = await session.execute(
+        select(Ticket)
+        .where(Ticket.payment_intent_id == payment_intent_id, Ticket.status == TicketStatus.VALID)
+        .with_for_update()
+    )
+    tickets = list(result.scalars().all())
+    
+    if not tickets:
+        logger.info("Nenhum ticket valido encontrado para refund: %s", payment_intent_id)
+        
+    for ticket in tickets:
+        ticket.status = TicketStatus.CANCELLED
+        
+        # Libera a cadeira
+        seat_result = await session.execute(
+            select(Seat).where(Seat.id == ticket.reservation_id).with_for_update()
+        )
+        seat = seat_result.scalar_one_or_none()
+        if seat:
+            seat.status = SeatStatus.AVAILABLE
+            seat.user_id = None
+            
+    # Salva idempotencia
+    processed = ProcessedWebhookEvent(
+        stripe_event_id=stripe_event_id,
+        event_type="charge.refunded",
+        processed_at=aware_utcnow(),
+    )
+    session.add(processed)
+    
+    try:
+        await session.commit()
+        logger.info("Refund processado para %d ingressos (Payment %s)", len(tickets), payment_intent_id)
+    except IntegrityError:
+        await session.rollback()
+        logger.info("Refund duplicado detectado: %s", stripe_event_id)

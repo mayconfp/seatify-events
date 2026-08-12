@@ -13,11 +13,15 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.errors.router import conflict_error, not_found_error, validation_error
+from src.core.config import settings
+from src.errors.router import conflict_error, not_found_error, validation_error, forbidden_error
 from src.module.auth.model import User
 from src.module.events.service import get_event_by_id
-from src.module.tickets.model import Seat, SeatStatus, Ticket
+from src.module.tickets.model import Seat, SeatStatus, Ticket, TicketStatus
 from src.util.datetime_utils import aware_utcnow
+import stripe
+
+stripe.api_key = settings.stripe_secret_key
 
 logger = logging.getLogger("eventify.tickets.service")
 
@@ -201,3 +205,48 @@ async def get_ticket_by_share_hash(session: AsyncSession, share_link_hash: str) 
     if ticket is None:
         raise not_found_error("Ingresso nao encontrado")
     return ticket
+
+
+async def request_refund(session: AsyncSession, ticket_id: UUID, user_id: UUID) -> None:
+    """Solicita reembolso (Opcao B - 2 horas antes) chamando apenas a API do Stripe.
+    
+    A devolucao efetiva das cadeiras sera feita pelo webhook `charge.refunded`.
+    """
+    result = await session.execute(
+        select(Ticket)
+        .options(joinedload(Ticket.event))
+        .where(Ticket.id == ticket_id, Ticket.deleted_at.is_(None))
+    )
+    ticket = result.scalar_one_or_none()
+    
+    if ticket is None:
+        raise not_found_error("Ingresso nao encontrado")
+        
+    if ticket.client_id != user_id:
+        raise forbidden_error("Este ingresso nao pertence a voce.")
+        
+    if ticket.status != TicketStatus.VALID:
+        raise validation_error(f"Ingresso nao pode ser reembolsado. Status atual: {ticket.status.value}")
+        
+    if not ticket.payment_intent_id:
+        raise validation_error("Nao eh possivel estornar um ingresso sem ID de transacao.")
+        
+    # Regra de 2 horas (CDC vs Eventos - Opcao B)
+    now = aware_utcnow()
+    event_start = ticket.event.event_date
+    if event_start <= now + timedelta(hours=2):
+        raise validation_error(
+            "Cancelamento nao permitido. O evento comecara em menos de 2 horas "
+            "ou ja ocorreu (Regra da plataforma)."
+        )
+        
+    # Chama Stripe
+    import asyncio
+    try:
+        await asyncio.to_thread(
+            stripe.Refund.create,
+            payment_intent=ticket.payment_intent_id,
+        )
+    except stripe.error.StripeError as exc:
+        logger.error("Erro no reembolso Stripe (ticket_id=%s): %s", ticket_id, exc)
+        raise validation_error(f"Falha ao processar estorno no provedor de pagamento: {exc}")

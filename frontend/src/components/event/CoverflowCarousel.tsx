@@ -42,9 +42,9 @@ export const CoverflowCarousel = ({ events }: CoverflowCarouselProps) => {
     // Transformations
     const sign = Math.sign(offset);
     
-    // Responsividade para evitar estouro horizontal em mobile
+    // Responsividade para evitar estouro horizontal e sobreposição excessiva no mobile
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    const offsetPercentage = isMobile ? 40 : 60; // No mobile move 40%, no desktop 60%
+    const offsetPercentage = isMobile ? 65 : 60; // No mobile afasta mais (65%) para não sobrepor tanto o centro
     
     const translateX = sign * absOffset * offsetPercentage; // percentage
     const rotateY = sign * absOffset * -45; // degrees
@@ -61,10 +61,10 @@ export const CoverflowCarousel = ({ events }: CoverflowCarouselProps) => {
   };
 
   return (
-    <div className="relative w-full max-w-6xl mx-auto h-[450px] md:h-[550px] flex items-center justify-center overflow-hidden px-4 mb-16">
+    <div className="relative w-full max-w-6xl mx-auto h-[480px] md:h-[580px] flex items-center justify-center overflow-hidden px-4 mb-16">
       
-      {/* Cards Container */}
-      <div className="relative w-full max-w-[320px] md:max-w-[400px] h-[400px] md:h-[500px] flex items-center justify-center [transform-style:preserve-3d]">
+      {/* Cards Container (2:3 Aspect Ratio para posters de filme) */}
+      <div className="relative w-full max-w-[280px] md:max-w-[360px] h-[420px] md:h-[540px] flex items-center justify-center [transform-style:preserve-3d]">
         {events.map((event, index) => {
           const style = getCardStyles(index);
           const isActive = index === activeIndex;
@@ -113,7 +113,7 @@ export const CoverflowCarousel = ({ events }: CoverflowCarouselProps) => {
                   </span>
                 </div>
 
-                <h3 className="text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-md leading-tight line-clamp-2">
+                <h3 className="text-2xl md:text-3xl font-extrabold text-white mb-2 drop-shadow-md leading-tight line-clamp-2">
                   {event.title}
                 </h3>
 

@@ -745,3 +745,82 @@ async def delete_organizer_event(
         event.title,
         organizer_id,
     )
+
+
+async def get_my_pending_seats(
+    session: AsyncSession, event_id: UUID, user_id: UUID
+) -> list[str]:
+    """Retorna os numeros dos assentos PENDING do usuario logado para o evento.
+
+    Args:
+        session: sessao async do banco.
+        event_id: UUID do evento.
+        user_id: UUID do usuario autenticado (Client).
+
+    Returns:
+        Lista de strings com os numeros dos assentos.
+    """
+    result = await session.execute(
+        select(Seat.seat_number)
+        .where(
+            Seat.event_id == event_id,
+            Seat.user_id == user_id,
+            Seat.status == SeatStatus.PENDING,
+            Seat.deleted_at.is_(None),
+        )
+        .order_by(Seat.seat_number.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def cancel_my_pending_seats(
+    session: AsyncSession, event_id: UUID, user_id: UUID, seat_numbers: list[str]
+) -> int:
+    """Cancela (libera) assentos PENDING que pertencem ao usuario logado.
+
+    Utiliza with_for_update() para evitar race conditions com webhooks de
+    pagamento atrasados do Stripe. Somente assentos do proprio usuario e que
+    estejam como PENDING serao liberados (Protecao IDOR e de Estado).
+
+    Args:
+        session: sessao async do banco.
+        event_id: UUID do evento.
+        user_id: UUID do usuario autenticado (Client).
+        seat_numbers: lista de assentos para cancelar.
+
+    Returns:
+        Numero de assentos efetivamente liberados.
+    """
+    if not seat_numbers:
+        return 0
+
+    # Bloqueio das linhas no banco antes de qualquer alteracao
+    result = await session.execute(
+        select(Seat)
+        .where(
+            Seat.event_id == event_id,
+            Seat.user_id == user_id,
+            Seat.seat_number.in_(seat_numbers),
+            Seat.status == SeatStatus.PENDING,
+            Seat.deleted_at.is_(None),
+        )
+        .with_for_update()
+    )
+    seats_to_release = list(result.scalars().all())
+
+    if not seats_to_release:
+        return 0
+
+    # Atualiza o status para AVAILABLE e remove a propriedade
+    for seat in seats_to_release:
+        seat.status = SeatStatus.AVAILABLE
+        seat.user_id = None
+
+    await session.commit()
+    logger.info(
+        "Usuario %s cancelou manualmente %d assentos PENDING no evento %s",
+        user_id,
+        len(seats_to_release),
+        event_id,
+    )
+    return len(seats_to_release)

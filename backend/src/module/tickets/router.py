@@ -67,3 +67,22 @@ async def get_ticket_by_share(
     """Retorna detalhes de um ingresso via link de compartilhamento (publico)."""
     ticket = await service.get_ticket_by_share_hash(session, share_link_hash)
     return TicketResponseSchema.model_validate(ticket)
+
+
+@router.post(
+    "/tickets/{ticket_id}/refund",
+    status_code=202,
+)
+@limiter.limit("5/minute")
+async def request_refund(
+    request: Request,
+    ticket_id: UUID,
+    session: SessionDep,
+    client: ClientDep,
+) -> dict[str, str]:
+    """Solicita reembolso de um ingresso (Apenas CLIENT).
+    
+    Usa a integracao assincrona (Opcao B - 2 horas) com o webhook do Stripe.
+    """
+    await service.request_refund(session, ticket_id, client.id)
+    return {"message": "Solicitacao de reembolso enviada com sucesso ao provedor de pagamentos."}

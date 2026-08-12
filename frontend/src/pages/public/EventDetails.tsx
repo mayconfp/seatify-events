@@ -21,6 +21,7 @@ export const EventDetails = () => {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [pendingSeats, setPendingSeats] = useState<string[]>([]);
   const [isReserving, setIsReserving] = useState(false);
 
   useEffect(() => {
@@ -58,20 +59,30 @@ export const EventDetails = () => {
           const seatsRes = await api.get<Seat[]>(`/events/${selectedSessionId}/seats`);
           setSeats(seatsRes.data);
           setSelectedSeats([]);
+          
+          if (isAuthenticated() && hasRole(['CLIENT'])) {
+            const pendingRes = await api.get<string[]>(`/events/${selectedSessionId}/seats/pending/me`);
+            setPendingSeats(pendingRes.data);
+          }
         } catch (error) {
           toast.error('Erro ao carregar assentos da sessão.');
         }
       };
       fetchSeats();
     }
-  }, [selectedSessionId, id, event]);
+  }, [selectedSessionId, id, event, isAuthenticated, hasRole]);
 
   const handleSeatToggle = (seatNumber: string) => {
-    setSelectedSeats((prev) =>
-      prev.includes(seatNumber)
-        ? prev.filter((s) => s !== seatNumber)
-        : [...prev, seatNumber]
-    );
+    setSelectedSeats((prev) => {
+      if (prev.includes(seatNumber)) {
+        return prev.filter((s) => s !== seatNumber);
+      }
+      if (prev.length >= 10) {
+        toast.error('Você pode reservar no máximo 10 assentos por vez.');
+        return prev;
+      }
+      return [...prev, seatNumber];
+    });
   };
 
   const handleReserve = async () => {
@@ -101,12 +112,48 @@ export const EventDetails = () => {
         const seatsRes = await api.get<Seat[]>(`/events/${id}/seats`);
         setSeats(seatsRes.data);
         setSelectedSeats([]);
+      } else if (error.response?.status === 400 && error.response?.data?.detail?.includes('Limite')) {
+         toast.error(error.response.data.detail);
       } else {
         toast.error('Erro ao reservar assentos.');
       }
     } finally {
       setIsReserving(false);
     }
+  };
+
+  const handleCancelPending = async () => {
+    try {
+      await api.post(`/events/${selectedSessionId}/seats/cancel`, {
+        seat_numbers: pendingSeats
+      });
+      toast.success('Reservas pendentes canceladas.');
+      setPendingSeats([]);
+      // Refresh map
+      const seatsRes = await api.get<Seat[]>(`/events/${selectedSessionId}/seats`);
+      setSeats(seatsRes.data);
+    } catch (error) {
+      toast.error('Erro ao cancelar reservas.');
+    }
+  };
+
+  const handleRemoveSinglePending = async (seatToRemove: string) => {
+    try {
+      await api.post(`/events/${selectedSessionId}/seats/cancel`, {
+        seat_numbers: [seatToRemove]
+      });
+      toast.success(`Assento ${seatToRemove} removido do carrinho.`);
+      setPendingSeats(prev => prev.filter(s => s !== seatToRemove));
+      // Refresh map
+      const seatsRes = await api.get<Seat[]>(`/events/${selectedSessionId}/seats`);
+      setSeats(seatsRes.data);
+    } catch (error) {
+      toast.error('Erro ao cancelar reserva do assento.');
+    }
+  };
+
+  const handleResumePayment = () => {
+    navigate(`/checkout/${selectedSessionId}`, { state: { selectedSeats: pendingSeats } });
   };
 
   if (loading) {
@@ -318,6 +365,51 @@ export const EventDetails = () => {
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2 transition-colors">Escolha seus assentos</h2>
             <p className="text-zinc-600 dark:text-zinc-400 text-sm">Selecione os lugares desejados para a sessão escolhida.</p>
           </div>
+
+          {pendingSeats.length > 0 && (
+            <div className="max-w-3xl mx-auto mb-10 bg-white dark:bg-zinc-900/60 border border-primary/30 dark:border-primary/20 rounded-2xl p-6 shadow-xl shadow-primary/5 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-bottom-4 fade-in duration-500 backdrop-blur-md relative overflow-hidden">
+              
+              {/* Decorative accent */}
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary to-primary-600"></div>
+
+              <div className="flex-1">
+                <h3 className="text-zinc-900 dark:text-zinc-100 font-bold text-lg flex items-center gap-2 mb-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                  </span>
+                  Retome sua compra
+                </h3>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed mb-3">
+                  Você possui {pendingSeats.length} {pendingSeats.length === 1 ? 'assento reservado' : 'assentos reservados'} aguardando pagamento. 
+                  Eles serão liberados automaticamente em <span className="font-semibold text-zinc-800 dark:text-zinc-300">15 minutos</span> se a compra não for concluída.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider self-center mr-2">Assentos:</span>
+                  {pendingSeats.map(seat => (
+                    <button 
+                      key={seat} 
+                      onClick={() => handleRemoveSinglePending(seat)}
+                      className="group flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-md text-sm font-bold shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-900/30 dark:hover:text-red-400 dark:hover:border-red-800/50 transition-colors"
+                      title="Remover assento"
+                    >
+                      {seat}
+                      <span className="opacity-40 group-hover:opacity-100 text-[10px] leading-none transition-opacity">✕</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-row md:flex-col gap-3 w-full md:w-auto md:min-w-[200px]">
+                <Button onClick={handleResumePayment} className="flex-1 shadow-md shadow-primary/20">
+                  Retomar Pagamento
+                </Button>
+                <Button onClick={handleCancelPending} variant="outline" className="flex-1 border-zinc-200 dark:border-zinc-800 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-colors">
+                  Cancelar Reservas
+                </Button>
+              </div>
+            </div>
+          )}
 
           <SeatMap
             seats={seats}

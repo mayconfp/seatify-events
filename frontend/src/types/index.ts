@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export type UserRole = "CLIENT" | "ORGANIZER" | "GATEKEEPER";
 
 export interface User {
@@ -71,6 +73,7 @@ export interface Seat {
 }
 
 export interface Ticket {
+  seat_number: ReactNode;
   id: string;
   event_id: string;
   client_id: string;
