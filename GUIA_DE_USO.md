@@ -26,6 +26,12 @@ O usuário escolhe sua poltrona numerada interativa (ex: A1, A2...) em uma inter
 O resumo do pedido exibe os assentos e o valor total.
 * **Flexibilidade de Pagamento**: O usuário pode optar por prosseguir para o ambiente oficial do Stripe Checkout ou utilizar o Modo Desenvolvedor (Simular Sucesso ou Simular Falha) para testes locais instantâneos sem dependência externa.
 
+> **Cartões de Teste (Stripe):** Como a integração com a Stripe está operando em **Modo de Teste** (Test Mode), cartões de crédito reais serão recusados. Para simular um pagamento com sucesso no ambiente oficial da Stripe, utilize o cartão de testes padrão da plataforma:
+> - **Número do Cartão:** `4242 4242 4242 4242`
+> - **Validade:** Qualquer data no futuro (ex: `12/30`)
+> - **CVC:** Qualquer código de 3 dígitos (ex: `123`)
+> - *Para testar recusas (cartão bloqueado, saldo insuficiente), consulte a [Documentação Oficial de Cartões de Teste da Stripe](https://docs.stripe.com/testing?locale=pt-BR#cards).*
+
 ### Carteira "Meus Ingressos" e Reembolsos
 Após a aprovação do pagamento, os ingressos são emitidos com um QR Code seguro (gerado via JWT criptografado) e um link de compartilhamento opaco exclusivo.
 * **Auto-Gestão de Estorno**: O cliente possui total autonomia para gerenciar solicitações de reembolso (cancelamento) diretamente na aba do ingresso. 
@@ -81,4 +87,5 @@ O back-end decodifica o token JWT do QR Code, valida a assinatura criptográfica
 > **Dica para o Avaliador (Como testar a Portaria):**  
 > Para ver o status **VÁLIDO**, você deve entrar no Painel do Organizador e criar uma sessão para o dia de **hoje**, configurando o horário para perto do momento atual (ex: se agora são 15h00, crie a sessão para 15h30). Como a catraca abre 2h antes e fecha 1h depois, o ingresso passará livremente!  
 > Se quiser ver o bloqueio **FORA DO HORÁRIO**, crie uma sessão para amanhã ou para uma data passada, compre o ingresso e tente ler o QR Code. O sistema irá barrá-lo propositalmente.
+
 

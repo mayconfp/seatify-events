@@ -20,6 +20,7 @@ from src.module.events.service import get_event_by_id
 from src.module.tickets.model import Seat, SeatStatus, Ticket, TicketStatus
 from src.util.datetime_utils import aware_utcnow
 import stripe
+import asyncio
 
 stripe.api_key = settings.stripe_secret_key
 
@@ -246,8 +247,15 @@ async def request_refund(session: AsyncSession, ticket_id: UUID, user_id: UUID) 
             "ou ja ocorreu (Regra da plataforma)."
         )
         
+    # Pagamentos simulados não suportam estorno automático na nossa regra de negócio
+    if ticket.payment_intent_id and ticket.payment_intent_id.startswith("pi_sim_"):
+        raise validation_error(
+            "Pagamentos simulados (Modo Dev) não suportam reembolso. "
+            "Apenas pagamentos reais via Stripe podem ser estornados."
+        )
+
     # Chama Stripe
-    import asyncio
+    
     try:
         await asyncio.to_thread(
             stripe.Refund.create,
@@ -256,3 +264,5 @@ async def request_refund(session: AsyncSession, ticket_id: UUID, user_id: UUID) 
     except stripe.error.StripeError as exc:
         logger.error("Erro no reembolso Stripe (ticket_id=%s): %s", ticket_id, exc)
         raise validation_error(f"Falha ao processar estorno no provedor de pagamento: {exc}")
+
+
