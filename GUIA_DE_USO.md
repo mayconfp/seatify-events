@@ -7,6 +7,10 @@ Este manual detalha o fluxo de ponta a ponta da plataforma Eventify, guiando o a
 ## 1. Jornada do Cliente (Usuário Comum)
 Qualquer visitante pode explorar os filmes em cartaz e o catálogo livremente. Para adquirir ingressos, o usuário atua com o perfil padrão de `CLIENT`.
 
+> **Conta de Teste (Cliente):** O usuário pode se cadastrar na própria interface em 5 segundos ou utilizar a conta padrão:
+> - **E-mail:** `client1@eventify.com`
+> - **Senha:** `Client1@2026`
+
 ### Cadastro e Acesso Simplificado (Auto-Login)
 A criação da conta é focada em conversão: o cliente informa apenas Nome, E-mail e Senha. Imediatamente após criar a conta, o sistema realiza o **Auto-Login** transparente, autenticando o usuário sem exigir que ele passe pela tela de login, devolvendo-o diretamente para o fluxo de compra. O Login tradicional (para retornos futuros) exige apenas E-mail e Senha.
 
@@ -45,6 +49,10 @@ Após a aprovação do pagamento, os ingressos são emitidos com um QR Code segu
 ## 2. Jornada do Organizador
 O organizador possui um painel administrativo exclusivo (`/organizer`) protegido por regras estritas de controle de acesso (RBAC).
 
+> **Conta de Teste (Organizador):** Para acessar o painel e gerenciar os eventos, faça login com a conta padrão:
+> - **E-mail:** `organizer@eventify.com`
+> - **Senha:** `Organizer@2026`
+
 ### Publicação de Sessões
 Na aba "Publicar Sessão", o organizador pesquisa um filme diretamente na base do TMDb. Ao selecionar o título, o sistema preenche automaticamente os metadados (sinopse, pôster, gênero e diretor).
 O organizador define a data, a sala/local, a capacidade de assentos e o preço, gerando instantaneamente o mapa de poltronas da sessão.
@@ -62,6 +70,10 @@ Ao clicar no botão "Relatório" em uma sessão específica, o organizador acess
 
 ## 3. Jornada da Portaria (Gatekeeper)
 A portaria (Gatekeeper) é o ponto focal de validação de entrada no evento.
+
+> **Conta de Teste (Porteiro):** Para acessar a tela de leitura de QR Code e validar os ingressos, faça login com a conta padrão:
+> - **E-mail:** `gatekeeper@eventify.com`
+> - **Senha:** `Gatekeeper@2026`
 
 ### Acesso à Tela de Validação
 Operadores autenticados com o perfil `GATEKEEPER` acessam a interface de leitura.
@@ -87,5 +99,6 @@ O back-end decodifica o token JWT do QR Code, valida a assinatura criptográfica
 > **Dica para o Avaliador (Como testar a Portaria):**  
 > Para ver o status **VÁLIDO**, você deve entrar no Painel do Organizador e criar uma sessão para o dia de **hoje**, configurando o horário para perto do momento atual (ex: se agora são 15h00, crie a sessão para 15h30). Como a catraca abre 2h antes e fecha 1h depois, o ingresso passará livremente!  
 > Se quiser ver o bloqueio **FORA DO HORÁRIO**, crie uma sessão para amanhã ou para uma data passada, compre o ingresso e tente ler o QR Code. O sistema irá barrá-lo propositalmente.
+
 
 
