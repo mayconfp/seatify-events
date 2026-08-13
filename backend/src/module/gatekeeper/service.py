@@ -98,11 +98,11 @@ async def validate_ticket_entry(
         )
 
     # 5. Verifica a Janela de Tempo (Time Window)
-    # Entrada permitida de 2 horas antes ate 4 horas depois do inicio
+    # Entrada permitida de 2 horas antes ate 1 hora depois do inicio (padrao de cinema)
     now = aware_utcnow()
     event_time = ticket.event.event_date
     window_start = event_time - timedelta(hours=2)
-    window_end = event_time + timedelta(hours=4)
+    window_end = event_time + timedelta(hours=1)
 
     if not (window_start <= now <= window_end):
         return ValidationResultSchema(

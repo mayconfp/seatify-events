@@ -31,6 +31,9 @@ Após a aprovação do pagamento, os ingressos são emitidos com um QR Code segu
 * **Auto-Gestão de Estorno**: O cliente possui total autonomia para gerenciar solicitações de reembolso (cancelamento) diretamente na aba do ingresso. 
 * O botão de "Solicitar Reembolso" atua integrado à API do Stripe e respeita a **Janela de Segurança**: o cliente só consegue estornar o valor e devolver a cadeira para o mapa se faltarem **mais de 2 horas** para o início da sessão. Pedidos de última hora são bloqueados pelo sistema.
 
+> **Dica para o Avaliador (Como testar o Estorno):**  
+> Para conseguir usar o botão de reembolso com sucesso, ao criar uma sessão no Painel do Organizador, coloque a data para **amanhã** ou para uma data futura distante. Se você comprar um ingresso para um filme que começa daqui a 30 minutos, o sistema (obedecendo a regra de negócio real de cinemas) vai impedir o seu estorno.
+
 ---
 
 ## 2. Jornada do Organizador
@@ -51,7 +54,7 @@ Ao clicar no botão "Relatório" em uma sessão específica, o organizador acess
 
 ---
 
-## 🛡️ 3. Jornada da Portaria (Gatekeeper)
+## 3. Jornada da Portaria (Gatekeeper)
 A portaria (Gatekeeper) é o ponto focal de validação de entrada no evento.
 
 ### Acesso à Tela de Validação
@@ -69,5 +72,9 @@ O back-end decodifica o token JWT do QR Code, valida a assinatura criptográfica
 * **VÁLIDO (VALID)**: Acesso liberado à sala de cinema (o ingresso é marcado automaticamente como `USED` para impedir reutilizações).
 * **JÁ UTILIZADO (ALREADY_USED)**: Alerta de tentativa de fraude por reutilização de bilhete.
 * **EVENTO ERRADO (WRONG_EVENT)**: Ingresso pertencente a outra sessão ou data.
-* **FORA DO HORÁRIO (WRONG_TIME)**: O usuário chegou muito cedo ou em um dia totalmente incorreto (a janela de validação aceita entrada entre 2h antes e 4h depois do início do filme).
+* **FORA DO HORÁRIO (WRONG_TIME)**: O usuário chegou muito cedo ou extremamente atrasado. Para o nicho de cinema, a janela de validação é rigorosa: a entrada só é permitida entre **2 horas antes e 1 hora depois** do horário marcado para o início do filme. Chegar com o filme já acabando aciona essa trava de segurança.
 * **INVÁLIDO (INVALID)**: Código corrompido, falso ou ingresso cancelado/reembolsado.
+
+> **Dica para o Avaliador (Como testar a Portaria):**  
+> Para ver o status **VÁLIDO**, você deve entrar no Painel do Organizador e criar uma sessão para o dia de **hoje**, configurando o horário para perto do momento atual (ex: se agora são 15h00, crie a sessão para 15h30). Como a catraca abre 2h antes e fecha 1h depois, o ingresso passará livremente!  
+> Se quiser ver o bloqueio **FORA DO HORÁRIO**, crie uma sessão para amanhã ou para uma data passada, compre o ingresso e tente ler o QR Code. O sistema irá barrá-lo propositalmente.
