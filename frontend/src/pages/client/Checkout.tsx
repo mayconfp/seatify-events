@@ -68,7 +68,8 @@ export const Checkout = () => {
       });
 
       if (simulateFailure) {
-        toast.error('Pagamento recusado. Tente novamente.');
+        toast.error('Pagamento recusado. Seus assentos foram liberados.');
+        navigate(`/events/${id}`);
       } else {
         toast.success('Pagamento aprovado! Seus ingressos foram gerados.');
         navigate('/tickets');
@@ -202,3 +203,4 @@ export const Checkout = () => {
     </div>
   );
 };
+
