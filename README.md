@@ -58,6 +58,7 @@ Iniciamos o desenvolvimento com uma estrutura genérica de gestão de eventos (n
 - **QR Codes Infalsificáveis**: Os ingressos geram um token JWT assinado digitalmente (`create_qr_token`) contendo apenas metadados opacos (`ticket_id` e `event_id`). 
 - **Validação Segura na Portaria (*Gatekeeper*)**: O aplicativo da portaria decodifica o token, valida a assinatura criptográfica, rejeita tokens de eventos errados (`WRONG_EVENT`) e barra reutilizações (`ALREADY_USED`) através de travas transacionais.
   - *Evolução de Regra de Negócio (Janela de Tempo)*: Inicialmente, o sistema permitia a validação baseada apenas na correspondência de IDs. Evoluímos o modelo para implementar uma **Janela de Tempo Estrita** (`WRONG_TIME`). Agora, o ingresso só é considerado válido se o check-in ocorrer entre **2 horas antes e 1 hora depois** do horário exato da sessão. Isso blinda o cinema contra erros humanos do porteiro (ao selecionar o evento da data errada no aplicativo) e barrar usuários com ingresso para dias passados/futuros ou que chegaram com o filme quase acabando.
+  - *Evolução de UX (Busca da Portaria)*: Para locais com dezenas de sessões, a seleção manual da sessão na portaria foi aprimorada com uma barra de busca inteligente. Foi feito tratamento de strings no Front-End que permite ao porteiro buscar filmes ignorando espaços, hifens e acentos de forma transparente e performática, sem quebrar o layout mobile em dias de alto movimento.
 - **Rate Limiting**: Proteção contra ataques de negação de serviço (DoS) e scraping nas rotas públicas e de autenticação utilizando o middleware `SlowAPI`.
 - **Prevenção de Supply Chain Attacks (Front-End)**: O ambiente de desenvolvimento isola dependências maliciosas forçando o uso de instalação limpa travada no Lockfile (`npm ci`) associado ao bloqueio de injeção de scripts arbitrários (`--ignore-scripts`).
 
@@ -151,3 +152,4 @@ A arquitetura e as escolhas de engenharia do Eventify baseiam-se inteiramente em
    npm run dev
    ```
 4. Acesse o Front-End pelo navegador através das URLs geradas no terminal (ex: `https://localhost:5173/`).
+

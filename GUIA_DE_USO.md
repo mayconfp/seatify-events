@@ -60,6 +60,9 @@ A portaria (Gatekeeper) é o ponto focal de validação de entrada no evento.
 ### Acesso à Tela de Validação
 Operadores autenticados com o perfil `GATEKEEPER` acessam a interface de leitura.
 
+### Busca Inteligente de Sessões
+Para locais com dezenas de sessões no mesmo dia, o porteiro conta com um filtro de busca inteligente e em tempo real. O sistema exibe por padrão apenas as sessões relevantes para o turno atual. Ao digitar o nome do filme, a busca normalizada ignora espaços, hifens, pontuações e acentuação gráfica, localizando a sessão exata instantaneamente.
+
 ### Leitura via Câmera do Celular
 O sistema aciona a câmera do dispositivo móvel através da engine `html5-qrcode`.
 Inclui um botão prático para alternar entre a câmera frontal e traseira do celular, facilitando a leitura ágil do QR Code impresso no celular do cliente na catraca.
@@ -78,3 +81,4 @@ O back-end decodifica o token JWT do QR Code, valida a assinatura criptográfica
 > **Dica para o Avaliador (Como testar a Portaria):**  
 > Para ver o status **VÁLIDO**, você deve entrar no Painel do Organizador e criar uma sessão para o dia de **hoje**, configurando o horário para perto do momento atual (ex: se agora são 15h00, crie a sessão para 15h30). Como a catraca abre 2h antes e fecha 1h depois, o ingresso passará livremente!  
 > Se quiser ver o bloqueio **FORA DO HORÁRIO**, crie uma sessão para amanhã ou para uma data passada, compre o ingresso e tente ler o QR Code. O sistema irá barrá-lo propositalmente.
+
