@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
   const [isRefunding, setIsRefunding] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [localStatus, setLocalStatus] = useState(ticket.status);
   const event = ticket.event;
   const seat = ticket.seat;
 
@@ -24,8 +25,8 @@ export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
 
   if (!event) return null;
 
-  const isValid = ticket.status === 'VALID';
-  const isUsed = ticket.status === 'USED';
+  const isValid = localStatus === 'VALID';
+  const isUsed = localStatus === 'USED';
   
   // Regra de 2 horas
   const isRefundable = isValid && (new Date(event.event_date).getTime() - new Date().getTime() > 2 * 60 * 60 * 1000);
@@ -42,6 +43,7 @@ export const TicketCard = ({ ticket }: { ticket: TicketType }) => {
       toast.success('Solicitação enviada!', {
         description: 'O estorno cairá na sua fatura e o ingresso será cancelado em instantes.'
       });
+      setLocalStatus('CANCELLED');
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Erro ao solicitar reembolso');
     } finally {

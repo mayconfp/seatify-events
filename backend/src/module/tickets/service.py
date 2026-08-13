@@ -226,7 +226,13 @@ async def request_refund(session: AsyncSession, ticket_id: UUID, user_id: UUID) 
         raise forbidden_error("Este ingresso nao pertence a voce.")
         
     if ticket.status != TicketStatus.VALID:
-        raise validation_error(f"Ingresso nao pode ser reembolsado. Status atual: {ticket.status.value}")
+        status_map = {
+            "CANCELLED": "Cancelado",
+            "USED": "Utilizado",
+            "PENDING": "Pendente",
+        }
+        pt_status = status_map.get(ticket.status.value, ticket.status.value)
+        raise validation_error(f"Ingresso nao pode ser reembolsado. Status atual: {pt_status}")
         
     if not ticket.payment_intent_id:
         raise validation_error("Nao eh possivel estornar um ingresso sem ID de transacao.")

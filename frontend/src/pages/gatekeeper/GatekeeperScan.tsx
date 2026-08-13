@@ -41,6 +41,7 @@ export const GatekeeperScan = () => {
     () => localStorage.getItem(SELECTED_EVENT_STORAGE_KEY) || ''
   );
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -54,12 +55,10 @@ export const GatekeeperScan = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await api.get<{ events: Event[] }>('/events', {
-          params: { page_size: 100 },
-        });
-        setEvents(response.data.events);
+        const response = await api.get<Event[]>('/gatekeeper/events/today');
+        setEvents(response.data);
       } catch {
-        toast.error('Não foi possível carregar a lista de eventos.');
+        toast.error('Não foi possível carregar as sessões do turno.');
       } finally {
         setLoadingEvents(false);
       }
@@ -259,28 +258,63 @@ export const GatekeeperScan = () => {
         </p>
 
         <div className="mb-6 text-left">
-          <label className="block text-xs font-semibold uppercase text-zinc-500 dark:text-slate-500 mb-2">
-            Evento
-          </label>
-          <select
-            value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-            disabled={loadingEvents}
-            className="w-full h-12 rounded-md bg-white dark:bg-slate-900 border border-zinc-300 dark:border-slate-700 text-zinc-900 dark:text-white px-3 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
-          >
-            <option value="">
-              {loadingEvents ? 'Carregando eventos...' : 'Selecione um evento'}
-            </option>
-            {events.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.title} — {new Date(event.event_date).toLocaleString('pt-BR')}
-              </option>
-            ))}
-          </select>
-          {!selectedEventId && !loadingEvents && (
-            <p className="text-amber-400 text-xs mt-2">
-              Selecione o evento para habilitar a validação.
-            </p>
+          {!selectedEventId ? (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <label className="block text-xs font-semibold uppercase text-zinc-500 dark:text-slate-500 mb-2">
+                Buscar Sessão do Turno
+              </label>
+              <Input
+                placeholder="Ex: Homem-Aranha, Velozes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="mb-3 bg-white dark:bg-slate-900 border-zinc-300 dark:border-slate-700 text-zinc-900 dark:text-white"
+              />
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-slate-700">
+                {loadingEvents ? (
+                  <p className="text-zinc-500 text-sm text-center py-4">Carregando sessões...</p>
+                ) : events.filter(e => e.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+                  <p className="text-zinc-500 text-sm text-center py-4">Nenhuma sessão encontrada.</p>
+                ) : (
+                  events.filter(e => e.title.toLowerCase().includes(searchQuery.toLowerCase())).map((event) => (
+                    <button
+                      key={event.id}
+                      onClick={() => setSelectedEventId(event.id)}
+                      className="w-full text-left p-3 rounded-lg border border-zinc-200 dark:border-slate-700 bg-zinc-50 hover:bg-zinc-100 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors group"
+                    >
+                      <p className="font-bold text-zinc-900 dark:text-white truncate group-hover:text-primary transition-colors">{event.title}</p>
+                      <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">
+                        {new Date(event.event_date).toLocaleString('pt-BR')} • {event.venue_name}
+                      </p>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="animate-in fade-in zoom-in-95 duration-300 bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl p-4 flex items-center justify-between">
+              <div className="overflow-hidden">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1">Sessão Ativa</p>
+                <p className="font-bold text-zinc-900 dark:text-white truncate">
+                  {events.find(e => e.id === selectedEventId)?.title || 'Sessão selecionada'}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-slate-400">
+                  {events.find(e => e.id === selectedEventId) 
+                    ? new Date(events.find(e => e.id === selectedEventId)!.event_date).toLocaleString('pt-BR')
+                    : ''}
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  if (cameraActive) stopCamera();
+                  setSelectedEventId('');
+                }}
+                className="shrink-0 text-xs py-1 h-8 px-3 border-zinc-300 dark:border-slate-600"
+              >
+                Trocar
+              </Button>
+            </div>
           )}
         </div>
 

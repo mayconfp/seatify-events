@@ -36,3 +36,24 @@ async def validate_entry(
     return await service.validate_ticket_entry(
         session, schema.qr_token_or_hash, schema.event_id
     )
+
+@router.get("/events/today", response_model=list[dict])
+async def list_gatekeeper_events(
+    session: SessionDep,
+    _gatekeeper: GatekeeperDep,
+) -> list[dict]:
+    """Lista sessoes operacionais do turno para a portaria.
+    
+    A portaria nao pode consumir a vitrine publica porque sessoes iniciadas
+    somem da vitrine. Retorna um array simples de dicionarios compatível com o schema do Front-End.
+    """
+    events = await service.list_today_events(session)
+    return [
+        {
+            "id": e.id,
+            "title": e.title,
+            "event_date": e.event_date,
+            "venue_name": e.venue_name,
+        }
+        for e in events
+    ]

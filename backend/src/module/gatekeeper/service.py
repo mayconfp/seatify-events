@@ -18,6 +18,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.module.events.model import Event
+
 from src.module.gatekeeper.schemas import ValidationResultSchema, ValidationStatus
 from src.module.tickets.model import Ticket, TicketStatus
 from src.util.datetime_utils import aware_utcnow
@@ -143,3 +145,26 @@ async def validate_ticket_entry(
         message="Acesso liberado",
         ticket_id=ticket.id,
     )
+
+async def list_today_events(session: AsyncSession) -> list[Event]:
+    """Lista eventos operacionais do dia atual para a portaria.
+    
+    A portaria nao deve usar a vitrine publica (/events), pois ela esconde
+    eventos que ja comecaram. Esta funcao retorna eventos num range de -4h
+    ate +12h, garantindo que a lista do porteiro fique enxuta e mostre apenas
+    as sessoes relevantes para o seu turno de trabalho.
+    """
+    now = aware_utcnow()
+    start_window = now - timedelta(hours=4)
+    end_window = now + timedelta(hours=12)
+
+    result = await session.execute(
+        select(Event)
+        .where(
+            Event.deleted_at.is_(None),
+            Event.event_date >= start_window,
+            Event.event_date <= end_window,
+        )
+        .order_by(Event.event_date.asc())
+    )
+    return list(result.scalars().all())

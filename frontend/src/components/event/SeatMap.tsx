@@ -19,11 +19,7 @@ export const SeatMap = ({ seats, selectedSeats, onSeatToggle }: SeatMapProps) =>
     return alphaA.localeCompare(alphaB);
   });
 
-  // Group into rows of 12 (approximate for theater look)
-  const rows = [];
-  for (let i = 0; i < sortedSeats.length; i += 12) {
-    rows.push(sortedSeats.slice(i, i + 12));
-  }
+  // Remove JS grouping to let CSS Grid handle responsive reflow naturally.
 
   return (
     <div className="w-full max-w-4xl mx-auto py-2">
@@ -37,50 +33,43 @@ export const SeatMap = ({ seats, selectedSeats, onSeatToggle }: SeatMapProps) =>
           <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent pointer-events-none" />
         </div>
 
-        {/* Container com scroll horizontal para mobile */}
-        <div className="w-full overflow-x-auto pb-8 px-4 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
-          {/* Cadeiras (Grid 2D) */}
-          <div className="flex flex-col gap-6 items-center min-w-max mx-auto">
-            {rows.map((row, rowIndex) => (
-              <div 
-                key={rowIndex} 
-                className="flex gap-3 md:gap-4 justify-center"
-              >
-                {row.map((seat) => {
-                  const isSelected = selectedSeats.includes(seat.seat_number);
-                  const isAvailable = seat.status === 'AVAILABLE';
+        {/* Container sem scroll forçado, permitindo reflow do Grid */}
+        <div className="w-full pb-8 px-2 md:px-4">
+          {/* Cadeiras (Grid CSS Responsivo) */}
+          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-3 md:gap-4 justify-items-center mx-auto max-w-fit">
+            {sortedSeats.map((seat) => {
+              const isSelected = selectedSeats.includes(seat.seat_number);
+              const isAvailable = seat.status === 'AVAILABLE';
 
-                  return (
-                    <button
-                      key={seat.id}
-                      disabled={!isAvailable}
-                      onClick={() => onSeatToggle(seat.seat_number)}
-                      className={cn(
-                        'w-10 h-12 md:w-12 md:h-14 rounded-t-xl rounded-b-md flex flex-col items-center justify-center transition-all duration-300 ease-out border-t-2 border-x-2 border-b-4 flex-shrink-0',
-                        // AVAILABLE
-                        isAvailable && !isSelected && 'bg-white dark:bg-slate-800 border-slate-300 border-b-slate-400 dark:border-slate-700 dark:border-b-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 hover:-translate-y-1 cursor-pointer shadow-[0_4px_10px_rgba(0,0,0,0.05)]',
-                        // SELECTED
-                        isSelected && 'bg-primary border-primary border-b-indigo-700 text-white shadow-[0_8px_20px_rgba(79,70,229,0.5)] transform -translate-y-1 scale-105 z-10',
-                        // PENDING / RESERVED (DISABLED)
-                        !isAvailable && 'bg-slate-100 dark:bg-slate-900/50 border-slate-200 border-b-slate-300 dark:border-slate-800 dark:border-b-slate-950 cursor-not-allowed opacity-50'
-                      )}
-                      title={`Assento ${seat.seat_number} - ${seat.status}`}
-                    >
-                      <span className={cn(
-                        "text-[10px] md:text-[11px] font-black leading-none mb-1",
-                        isSelected ? "text-white" : (!isAvailable ? "text-slate-500 dark:text-slate-500" : "text-slate-700 dark:text-slate-200")
-                      )}>
-                        {seat.seat_number}
-                      </span>
-                      <Armchair className={cn(
-                        "w-5 h-5 md:w-6 md:h-6",
-                        isSelected ? "text-white" : (!isAvailable ? "text-slate-400 dark:text-slate-600" : "text-slate-400 dark:text-slate-400")
-                      )} />
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+              return (
+                <button
+                  key={seat.id}
+                  disabled={!isAvailable}
+                  onClick={() => onSeatToggle(seat.seat_number)}
+                  className={cn(
+                    'w-10 h-12 md:w-12 md:h-14 rounded-t-xl rounded-b-md flex flex-col items-center justify-center transition-all duration-300 ease-out border-t-2 border-x-2 border-b-4 flex-shrink-0',
+                    // AVAILABLE
+                    isAvailable && !isSelected && 'bg-white dark:bg-slate-800 border-slate-300 border-b-slate-400 dark:border-slate-700 dark:border-b-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 hover:-translate-y-1 cursor-pointer shadow-[0_4px_10px_rgba(0,0,0,0.05)]',
+                    // SELECTED
+                    isSelected && 'bg-primary border-primary border-b-indigo-700 text-white shadow-[0_8px_20px_rgba(79,70,229,0.5)] transform -translate-y-1 scale-105 z-10',
+                    // PENDING / RESERVED (DISABLED)
+                    !isAvailable && 'bg-slate-100 dark:bg-slate-900/50 border-slate-200 border-b-slate-300 dark:border-slate-800 dark:border-b-slate-950 cursor-not-allowed opacity-50'
+                  )}
+                  title={`Assento ${seat.seat_number} - ${seat.status}`}
+                >
+                  <span className={cn(
+                    "text-[10px] md:text-[11px] font-black leading-none mb-1",
+                    isSelected ? "text-white" : (!isAvailable ? "text-slate-500 dark:text-slate-500" : "text-slate-700 dark:text-slate-200")
+                  )}>
+                    {seat.seat_number}
+                  </span>
+                  <Armchair className={cn(
+                    "w-5 h-5 md:w-6 md:h-6",
+                    isSelected ? "text-white" : (!isAvailable ? "text-slate-400 dark:text-slate-600" : "text-slate-400 dark:text-slate-400")
+                  )} />
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
