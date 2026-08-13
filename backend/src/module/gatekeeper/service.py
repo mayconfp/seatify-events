@@ -150,12 +150,12 @@ async def list_today_events(session: AsyncSession) -> list[Event]:
     """Lista eventos operacionais do dia atual para a portaria.
     
     A portaria nao deve usar a vitrine publica (/events), pois ela esconde
-    eventos que ja comecaram. Esta funcao retorna eventos num range de -4h
+    eventos que ja comecaram. Esta funcao retorna eventos num range de -5h
     ate +12h, garantindo que a lista do porteiro fique enxuta e mostre apenas
-    as sessoes relevantes para o seu turno de trabalho.
+    as sessoes relevantes
     """
     now = aware_utcnow()
-    start_window = now - timedelta(hours=4)
+    start_window = now - timedelta(hours=5)
     end_window = now + timedelta(hours=12)
 
     result = await session.execute(

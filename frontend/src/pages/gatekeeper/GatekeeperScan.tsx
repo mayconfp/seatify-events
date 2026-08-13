@@ -272,10 +272,10 @@ export const GatekeeperScan = () => {
               <div className="max-h-64 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-slate-700">
                 {loadingEvents ? (
                   <p className="text-zinc-500 text-sm text-center py-4">Carregando sessões...</p>
-                ) : events.filter(e => e.title.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+                ) : events.filter(e => e.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase().includes(searchQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase())).length === 0 ? (
                   <p className="text-zinc-500 text-sm text-center py-4">Nenhuma sessão encontrada.</p>
                 ) : (
-                  events.filter(e => e.title.toLowerCase().includes(searchQuery.toLowerCase())).map((event) => (
+                  events.filter(e => e.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase().includes(searchQuery.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase())).map((event) => (
                     <button
                       key={event.id}
                       onClick={() => setSelectedEventId(event.id)}
@@ -391,3 +391,4 @@ export const GatekeeperScan = () => {
     </div>
   );
 };
+
