@@ -251,7 +251,7 @@ async def request_refund(session: AsyncSession, ticket_id: UUID, user_id: UUID) 
     if ticket.payment_intent_id and ticket.payment_intent_id.startswith("pi_sim_"):
         raise validation_error(
             "Pagamentos simulados (Modo Dev) não suportam reembolso. "
-            "Apenas pagamentos reais via Stripe podem ser estornados."
+            "Apenas pagamentos via Stripe podem ser estornados."
         )
 
     # Chama Stripe
