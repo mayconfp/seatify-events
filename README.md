@@ -72,18 +72,6 @@ Iniciamos o desenvolvimento com uma estrutura genérica de gestão de eventos (n
 
 ---
 
-## Processo de Desenvolvimento e Uso de Inteligência Artificial
-
-Em atendimento direto à diretriz do edital sobre o uso transparente de Inteligência Artificial:
-- **Auxílio da IA**: A ferramenta foi utilizada como um par de programação (*co-pilot e Antigravity*) para agilizar a criação de estruturas repetitivas de código (como schemas Pydantic, rotas auxiliares em routers e estruturação inicial de componentes de interface).
-- **Autoria Humana**: As decisões críticas de engenharia foram inteiramente conduzidas pelo desenvolvedor:
-  - Concepção do modelo de concorrência atômica com `SELECT ... FOR UPDATE` para zerar falhas de *double-booking*.
-  - Tratamento de resiliência e idempotência em dupla camada para webhooks do Stripe.
-  - Arquitetura de segurança para validação de ingressos na portaria via tokens JWT criptografados.
-  - **Auditoria de Regras de Negócio**: Identificação proativa da falha lógica na portaria (que inicialmente validava ingressos ignorando a distância das datas) e direcionamento da IA para estruturar e codificar a barreira temporal estrita da Janela de Tempo (`WRONG_TIME`).
-
----
-
 ## Referências de Mercado
 - **Ingresso.com**: Inspiração para a experiência de escolha de poltronas de cinema, paginação de horários por sala e visualização de cartazes.
 - **Sympla**: Referência para o painel administrativo do organizador e relatórios analíticos de ocupação.
