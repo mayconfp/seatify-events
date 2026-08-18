@@ -1,6 +1,6 @@
 # Eventify — Plataforma de Bilheteria e Gestão de Sessões de Cinema
 
-Aplicação fullstack desenvolvida para o **Desafio Elite Dev 2026 (Verzel)**. O projeto simula um ecossistema completo de bilheteria de cinema, cobrindo desde a busca de filmes via API externa (TMDb) e cadastro de sessões pelo organizador, até a seleção de assentos em tempo real com mapas em perspectiva, checkout integrado ao Stripe, emissão de ingressos com QR Code criptografado (JWT) e validação segura na portaria (*Gatekeeper*).
+Aplicação fullstack. O projeto simula um ecossistema completo de bilheteria de cinema, cobrindo desde a busca de filmes via API externa (TMDb) e cadastro de sessões pelo organizador, até a seleção de assentos em tempo real com mapas em perspectiva, checkout integrado ao Stripe, emissão de ingressos com QR Code criptografado (JWT) e validação segura na portaria (*Gatekeeper*).
 
 > 📖 **[Clique aqui para ler o Guia de Uso Completo (Manual da Plataforma)](./GUIA_DE_USO.md)**
 
