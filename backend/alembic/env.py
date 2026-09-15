@@ -27,23 +27,37 @@ from src.db.base import Base
 def _database_url() -> str:
     """Resolve DATABASE_URL sem depender do Settings completo.
 
-    Ordem de busca:
+    Garante o driver asyncpg e busca na seguinte ordem:
     1. Variável de ambiente DATABASE_URL.
-    2. Arquivo .env na raiz do projeto (dois níveis acima de backend/alembic/).
+    2. Arquivo .env em backend/.env ou project_root/.env.
     """
     url = os.environ.get("DATABASE_URL")
+    
     if not url:
-        # Caminho: backend/alembic/env.py → backend/ → project_root/.env
-        env_file = Path(__file__).resolve().parents[2] / ".env"
-        if env_file.is_file():
-            url = dotenv_values(env_file).get("DATABASE_URL")
+        # Tenta backend/.env e depois project_root/.env
+        possible_paths = [
+            Path(__file__).resolve().parents[1] / ".env",  # backend/.env
+            Path(__file__).resolve().parents[2] / ".env",  # project_root/.env
+        ]
+        for env_file in possible_paths:
+            if env_file.is_file():
+                url = dotenv_values(env_file).get("DATABASE_URL")
+                if url:
+                    break
+
     if not url:
         raise RuntimeError(
             "DATABASE_URL não está definido — exporte a variável ou adicione-a ao .env "
             "para que o Alembic consiga conectar ao banco."
         )
-    return url
 
+    # 🔹 Normalização do schema para forçar o asyncpg
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    return url
 
 # Configuração Alembic
 
